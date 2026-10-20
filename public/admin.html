@@ -241,6 +241,7 @@
           <p id="last-updated"></p>
         </div>
         <div class="head-actions">
+          <a class="btn" href="/?staff">Add a booking</a>
           <button type="button" class="btn btn-quiet" id="refresh-btn">Refresh</button>
           <button type="button" class="btn btn-quiet" id="csv-btn">Download spreadsheet</button>
           <button type="button" class="btn btn-quiet" id="print-btn">Print list</button>
@@ -506,7 +507,8 @@
       if (!b) return;
       openId = id;
       $("d-title").textContent = b.eventName;
-      $("d-ref").textContent = `${b.id}. Received ${new Date(b.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}`;
+      const when = new Date(b.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+      $("d-ref").textContent = `${b.id}. ${b.addedByStaff ? "Added by the Catering Team" : "Received"} ${when}`;
 
       const fact = (label, val) => val ? `<div><dt>${label}</dt><dd>${val}</dd></div>` : "";
       let order = "";
@@ -563,7 +565,7 @@
             <span class="saved-msg" id="d-saved" role="status"></span>
           </div>
           <div>
-            <a class="btn btn-quiet" href="mailto:${esc(b.email)}?subject=${subject}">Email ${esc(b.name.split(" ")[0])}</a>
+            ${b.email ? `<a class="btn btn-quiet" href="mailto:${esc(b.email)}?subject=${subject}">Email ${esc(b.name.split(" ")[0])}</a>` : ""}
             <button type="button" class="btn btn-danger" id="d-delete">Delete booking</button>
           </div>
         </div>`;

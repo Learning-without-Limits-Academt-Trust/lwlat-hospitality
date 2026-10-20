@@ -144,6 +144,17 @@
     .done p + p { margin-top: 12px; }
     .done .btn { margin-top: 24px; }
 
+    .staff-panel {
+      margin-bottom: 20px;
+      padding: 20px 22px 24px;
+      border: 2px solid var(--ink);
+      border-radius: var(--radius-m);
+      background: var(--paper);
+    }
+    .staff-banner { margin-bottom: 20px; }
+    .done .done-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .done .done-actions .btn { margin-top: 0; }
+
     .honey { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
     @media (max-width: 920px) {
@@ -169,7 +180,7 @@
       </a>
       <div class="band-actions">
         <span class="band-title">Catering bookings</span>
-        <a class="btn btn-on-band" href="/admin">Catering Team login</a>
+        <a class="btn btn-on-band" href="/admin" id="band-link">Catering Team login</a>
       </div>
     </div>
   </header>
@@ -181,6 +192,23 @@
           <h1>Book hospitality or packed lunches</h1>
           <p>Use this form to request food and drink for a meeting or event on site, or packed lunches for a trip. Sending the form is a request only. The Catering Team will email you to confirm your booking.</p>
           <p class="hint" id="notice-text"></p>
+        </div>
+
+        <div class="staff-panel" id="staff-panel" hidden>
+          <p class="staff-banner"><strong>Catering Team entry.</strong> You are adding a booking yourself, for example a phone order or one that has already happened. Past dates are allowed, the notice period does not apply and contact details are optional.</p>
+          <fieldset class="field" id="f-status">
+            <legend>Status to give this booking</legend>
+            <div class="options inline">
+              <label class="option"><input type="radio" name="staffStatus" value="Confirmed" form="booking" checked> Confirmed</label>
+              <label class="option"><input type="radio" name="staffStatus" value="Completed" form="booking"> Completed</label>
+              <label class="option"><input type="radio" name="staffStatus" value="New" form="booking"> New</label>
+            </div>
+          </fieldset>
+          <div class="field" id="f-cateringNotes">
+            <label for="cateringNotes">Catering Team notes <span class="optional">(optional)</span></label>
+            <p class="hint" id="cn-hint">For example, how the order came in. Only the Catering Team can see these.</p>
+            <textarea id="cateringNotes" form="booking" maxlength="2000" aria-describedby="cn-hint"></textarea>
+          </div>
         </div>
 
         <div class="notice notice-error" id="error-summary" tabindex="-1" role="alert" hidden>
@@ -392,9 +420,12 @@
       <div class="done" tabindex="-1" id="done-panel">
         <h1>Booking request sent</h1>
         <div class="ref">Your reference<strong id="done-ref"></strong></div>
-        <p>The Catering Team will email <strong id="done-email"></strong> to confirm your booking or to ask any questions.</p>
-        <p>Your booking is not confirmed until you hear from them. Please quote your reference if you need to change or cancel it.</p>
-        <button type="button" class="btn btn-quiet" id="again-btn">Make another booking</button>
+        <p id="done-public">The Catering Team will email <strong id="done-email"></strong> to confirm your booking or to ask any questions.</p>
+        <p id="done-public-2">Your booking is not confirmed until you hear from them. Please quote your reference if you need to change or cancel it.</p>
+        <div class="done-actions">
+          <button type="button" class="btn btn-quiet" id="again-btn">Make another booking</button>
+          <a class="btn" href="/admin" id="done-admin" hidden>Back to bookings</a>
+        </div>
       </div>
     </div>
   </main>
@@ -443,12 +474,37 @@
     ).join(""));
     const BESPOKE = "Bespoke, themed or other";
 
+    // Catering Team mode (/?staff) for adding bookings by hand. It uses the
+    // password from the admin page, so the server can check it.
+    const STAFF = new URLSearchParams(location.search).has("staff");
+    const STAFF_OPTIONAL = ["email", "phone", "department", "time", "costCentre", "venue", "address", "receiverName", "receiverPhone"];
+    let staffPw = "";
+    try { staffPw = sessionStorage.getItem("lwlat-catering-pw") || ""; } catch {}
+    if (STAFF && !staffPw) location.replace("/admin");
+
     // Earliest date that gives enough notice.
     const earliest = addWorkingDays(new Date(), MIN_NOTICE_WORKING_DAYS);
     const earliestIso = toIso(earliest);
-    $("date").min = earliestIso;
-    $("date-hint").textContent = `Earliest date: ${formatDate(earliestIso)}`;
-    $("notice-text").textContent = `Please allow at least ${MIN_NOTICE_WORKING_DAYS} working days' notice.`;
+    if (STAFF) {
+      document.title = "Add a booking | LWLAT";
+      document.querySelector(".intro h1").textContent = "Add a booking";
+      document.querySelector(".intro h1 + p").textContent = "Enter the details of a booking the Catering Team has taken by phone, email or in person. It will go straight onto the bookings list.";
+      $("date-hint").textContent = "Any date, including past dates";
+      $("staff-panel").hidden = false;
+      $("band-link").textContent = "Back to bookings";
+      $("done-admin").hidden = false;
+      $("done-public").hidden = true;
+      $("done-public-2").hidden = true;
+      $("again-btn").textContent = "Add another booking";
+      $("submit-btn").textContent = "Add booking";
+      for (const id of STAFF_OPTIONAL) {
+        $(id).closest(".field").querySelector("label").insertAdjacentHTML("beforeend", ' <span class="optional">(optional)</span>');
+      }
+    } else {
+      $("date").min = earliestIso;
+      $("date-hint").textContent = `Earliest date: ${formatDate(earliestIso)}`;
+      $("notice-text").textContent = `Please allow at least ${MIN_NOTICE_WORKING_DAYS} working days' notice.`;
+    }
 
     form.addEventListener("input", update);
     form.addEventListener("change", update);
@@ -577,14 +633,17 @@
 
     function validate(d) {
       const errors = [];
-      const need = (ok, field, message, focusId) => { if (!ok) errors.push({ field, message, focusId }); };
+      const need = (ok, field, message, focusId) => {
+        if (STAFF && STAFF_OPTIONAL.includes(field) && !d[field]) return;
+        if (!ok) errors.push({ field, message, focusId });
+      };
       const whole = (s, min) => /^\d+$/.test(s) && Number(s) >= min;
 
       need(d.type, "type", "Choose hospitality or packed lunches", "f-type");
       need(d.site, "site", "Choose which site the booking is for", "f-site");
       need(d.eventName, "eventName", "Enter the event or meeting name");
       if (!d.date) need(false, "date", "Enter the date");
-      else need(d.date >= earliestIso, "date",
+      else need(STAFF || d.date >= earliestIso, "date",
         `Bookings need ${MIN_NOTICE_WORKING_DAYS} working days' notice. Choose ${formatDate(earliestIso)} or later`);
       need(d.time, "time", "Enter the delivery or service time");
       need(whole(d.people, 1), "people", "Enter the number of people as a whole number");
@@ -611,7 +670,7 @@
       if (d.dietary === "Yes") need(d.dietaryDetails, "dietaryDetails", "Give details of the dietary requirements or allergies");
 
       need(d.name, "name", "Enter your name");
-      if (!d.email) need(false, "email", "Enter your email address");
+      if (!d.email) need(STAFF, "email", "Enter your email address");
       else need(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email), "email", "Enter a valid email address, like name@lwlat.org.uk");
       need(d.phone, "phone", "Enter a contact telephone number");
       need(d.department, "department", "Enter your department, team or organisation");
@@ -680,13 +739,17 @@
       btn.disabled = true;
       btn.textContent = "Sending...";
       try {
-        const res = await fetch("/api/bookings", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(d),
-        });
+        const headers = { "content-type": "application/json" };
+        if (STAFF) {
+          headers.authorization = "Bearer " + staffPw;
+          d.status = document.querySelector('[name="staffStatus"]:checked').value;
+          d.cateringNotes = $("cateringNotes").value.trim();
+        }
+        const res = await fetch("/api/bookings", { method: "POST", headers, body: JSON.stringify(d) });
         const data = await res.json().catch(() => ({}));
+        if (STAFF && res.status === 401) { location.replace("/admin"); return; }
         if (!res.ok) throw new Error(data.error || "The booking could not be sent. Please try again.");
+        if (STAFF) $("done-panel").querySelector("h1").textContent = "Booking added";
         $("done-ref").textContent = data.reference;
         $("done-email").textContent = d.email;
         $("form-view").hidden = true;
@@ -704,7 +767,7 @@
         $("error-summary").focus();
       } finally {
         btn.disabled = false;
-        btn.textContent = "Send booking request";
+        btn.textContent = STAFF ? "Add booking" : "Send booking request";
       }
     });
 
