@@ -110,6 +110,22 @@
     .ticket .t-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
     .ticket .t-people { font-weight: 700; white-space: nowrap; }
 
+    .alert-test {
+      margin-top: 24px;
+      padding: 20px 22px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--teal);
+      border-radius: var(--radius-m);
+    }
+    .alert-test-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .alert-test h2 { font-size: 1.25rem; font-weight: 800; }
+    .alert-test p { margin-top: 10px; }
+    .alert-test table { width: 100%; margin-top: 14px; border-collapse: collapse; }
+    .alert-test th, .alert-test td { text-align: left; vertical-align: top; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+    .alert-test th { color: var(--muted); font-weight: 700; font-size: 0.9rem; }
+    .ok-text { color: var(--ok); font-weight: 700; }
+    .no-text { color: var(--no); font-weight: 700; }
     .result-count { margin-top: 16px; color: var(--muted); font-size: 0.95rem; }
     .empty-state {
       margin-top: 32px;
@@ -207,7 +223,7 @@
 
     @media print {
       body { background: #fff; font-size: 11pt; }
-      .band, .board-head, .tabs, .filters, .site-footer, dialog { display: none !important; }
+      .band, .board-head, .tabs, .filters, .site-footer, dialog, .alert-test, .result-count { display: none !important; }
       .print-title { display: block; font-size: 16pt; font-weight: 800; margin-bottom: 8pt; }
       .wrap { max-width: none; padding: 0; }
       .day { margin-top: 14pt; break-inside: avoid-page; }
@@ -253,8 +269,17 @@
           <button type="button" class="btn btn-text" id="refresh-btn">Refresh</button>
           <button type="button" class="btn btn-text" id="csv-btn">Download spreadsheet</button>
           <button type="button" class="btn btn-text" id="print-btn">Print list</button>
+          <button type="button" class="btn btn-text" id="alert-test-btn">Test email alerts</button>
         </div>
       </div>
+
+      <section class="alert-test" id="alert-test" aria-labelledby="alert-test-title" tabindex="-1" hidden>
+        <div class="alert-test-head">
+          <h2 id="alert-test-title">Email alerts</h2>
+          <button type="button" class="btn btn-text" id="alert-test-close">Close</button>
+        </div>
+        <div id="alert-test-body"></div>
+      </section>
 
       <div class="tabs" role="group" aria-label="Which bookings to show">
         <button type="button" class="tab" data-view="new" aria-pressed="true">Needs a reply<span class="count" id="count-new"></span></button>
@@ -269,7 +294,7 @@
           <select id="f-site">
             <option value="">All sites</option>
             <option>Babington</option><option>Heatherbrook</option><option>Lancaster</option>
-            <option>South Wigston</option><option>Woodstock</option>
+            <option>South Wigston</option><option>Woodstock</option><option>Central Team</option>
           </select>
         </div>
         <div>
@@ -531,6 +556,9 @@
           ${STATUSES.map((s) => `<button type="button" class="status-btn" data-status="${s}" aria-pressed="${b.status === s}">${s}</button>`).join("")}
         </div>
 
+        <h3>Email alert</h3>
+        <p class="alert-line">${alertLine(b)}</p>
+
         <h3>Booking</h3>
         <dl class="facts">
           ${fact("Type", b.type === "hospitality" ? "Hospitality" : "Packed lunches")}
@@ -626,6 +654,46 @@
     // ---------- export and print ----------
 
     $("print-btn").addEventListener("click", () => window.print());
+
+    // ---------- email alerts ----------
+
+    function alertLine(b) {
+      if (b.addedByStaff) return "None. Bookings added by the Catering Team do not send alerts.";
+      if (!b.alert) return "No record. This booking was made before alerts were tracked.";
+      const when = new Date(b.alert.at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+      return b.alert.sent
+        ? `<span class="ok-text">Sent</span> to ${esc(b.alert.to.join(", "))} on ${esc(when)}`
+        : `<span class="no-text">Not sent.</span> ${esc(b.alert.reason)}`;
+    }
+
+    $("alert-test-close").addEventListener("click", () => { $("alert-test").hidden = true; $("alert-test-btn").focus(); });
+    $("alert-test-btn").addEventListener("click", async () => {
+      const btn = $("alert-test-btn");
+      btn.disabled = true;
+      btn.textContent = "Testing...";
+      try {
+        const r = await api("/api/alert-test", { method: "POST" });
+        const rows = r.routing.map((x) => `<tr><td>${esc(x.site)}</td><td>${x.to.length
+          ? esc(x.to.join(", "))
+          : `<span class="no-text">No address set.</span> Add ${esc(x.key)} or NOTIFY_TRUST in Netlify.`}</td></tr>`).join("");
+        $("alert-test-body").innerHTML = `
+          <p>${r.test.sent
+            ? `<span class="ok-text">Test email sent</span> to ${esc(r.test.to.join(", "))} from ${esc(r.from)}. Check your inbox, and your junk folder if it is not there within a few minutes.`
+            : `<span class="no-text">Test email not sent.</span> ${esc(r.test.reason)}`}</p>
+          <p>The test goes to you only. Real alerts go to these addresses:</p>
+          <table><thead><tr><th scope="col">Site</th><th scope="col">Alerts go to</th></tr></thead><tbody>${rows}</tbody></table>`;
+        $("alert-test").hidden = false;
+        $("alert-test").focus();
+      } catch (err) {
+        if (err.message !== "signed-out") {
+          $("alert-test-body").innerHTML = `<p><span class="no-text">The test could not run.</span> ${esc(err.message)}</p>`;
+          $("alert-test").hidden = false;
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Test email alerts";
+      }
+    });
 
     $("csv-btn").addEventListener("click", () => {
       const cols = [

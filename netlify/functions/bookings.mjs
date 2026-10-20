@@ -20,7 +20,7 @@ export const config = {
   path: ["/api/bookings", "/api/bookings/:id"],
 };
 
-const SITES = ["Babington", "Heatherbrook", "Lancaster", "South Wigston", "Woodstock"];
+const SITES = ["Babington", "Heatherbrook", "Lancaster", "South Wigston", "Woodstock", "Central Team"];
 const TYPES = ["hospitality", "packed-lunch"];
 const STATUSES = ["New", "Confirmed", "Declined", "Cancelled", "Completed"];
 const MAX_BODY_BYTES = 20000;
@@ -81,13 +81,13 @@ async function createBooking(req) {
   await store().setJSON(booking.id, booking);
 
   // Tell the site's catering manager. Bookings the team adds themselves need
-  // no alert, and a failed email must not lose the booking.
+  // no alert. The booking is already saved, so a failed email cannot lose it,
+  // and the outcome is kept on the booking for the admin page to show.
   if (!staff) {
-    try {
-      await notifyNewBooking(booking);
-    } catch (err) {
-      console.error("Booking alert failed", booking.id, err);
-    }
+    const alert = await notifyNewBooking(booking);
+    if (!alert.sent) console.error("Booking alert not sent", booking.id, alert.reason);
+    booking.alert = { ...alert, at: new Date().toISOString() };
+    await store().setJSON(booking.id, booking);
   }
 
   return json({ ok: true, reference: booking.id }, 201);

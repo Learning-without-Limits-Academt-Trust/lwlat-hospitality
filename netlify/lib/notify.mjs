@@ -5,20 +5,27 @@
 //   GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET   from IT's app registration
 //   NOTIFY_FROM          the mailbox the alerts come from (optional, defaults to
 //                        catering-notifications@lwlat.org.uk)
-//   NOTIFY_BABINGTON, NOTIFY_HEATHERBROOK, NOTIFY_LANCASTER,
-//   NOTIFY_SOUTH_WIGSTON, NOTIFY_WOODSTOCK   who to tell for each site
+//   NOTIFY_BABINGTON, NOTIFY_HEATHERBROOK, NOTIFY_LANCASTER, NOTIFY_SOUTH_WIGSTON,
+//   NOTIFY_WOODSTOCK, NOTIFY_CENTRAL_TEAM    who to tell for each site
 //   NOTIFY_TRUST         who to copy on every booking (optional)
 //   SITE_URL             the site's address, for the link to the admin page (optional,
 //                        Netlify sets URL automatically)
 //
 // Each NOTIFY_ variable can hold several addresses separated by commas.
+//
+// Every attempt returns { sent, to, reason } so the admin page can show what
+// happened to each booking's alert without anyone reading the server logs.
 
 const env = (name) => (process.env[name] || "").trim();
 const DEFAULT_FROM = "catering-notifications@lwlat.org.uk";
+const GRAPH_SETTINGS = ["GRAPH_TENANT_ID", "GRAPH_CLIENT_ID", "GRAPH_CLIENT_SECRET"];
 
-function recipients(site) {
-  const key = "NOTIFY_" + site.toUpperCase().replace(/[^A-Z]+/g, "_");
-  const list = [env(key), env("NOTIFY_TRUST")].join(",")
+export const siteKey = (site) => "NOTIFY_" + site.toUpperCase().replace(/[^A-Z]+/g, "_");
+export const sender = () => env("NOTIFY_FROM") || DEFAULT_FROM;
+export const missingSettings = () => GRAPH_SETTINGS.filter((name) => !env(name));
+
+export function recipients(site) {
+  const list = [env(siteKey(site)), env("NOTIFY_TRUST")].join(",")
     .split(/[,;\s]+/)
     .map((a) => a.trim().toLowerCase())
     .filter((a) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a));
@@ -27,28 +34,50 @@ function recipients(site) {
 
 export async function notifyNewBooking(booking) {
   const to = recipients(booking.site);
-  const from = env("NOTIFY_FROM") || DEFAULT_FROM;
-  if (!to.length || !env("GRAPH_CLIENT_SECRET")) {
-    console.log("Booking alert not sent: email settings are not complete.");
-    return;
+  if (!to.length) {
+    return { sent: false, to, reason: `No alert address is set for ${booking.site}. Add ${siteKey(booking.site)} or NOTIFY_TRUST in Netlify, then redeploy.` };
   }
-
-  const token = await getToken();
-  const res = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(from)}/sendMail`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      message: {
-        subject: subject(booking),
-        body: { contentType: "HTML", content: html(booking) },
-        toRecipients: to.map((address) => ({ emailAddress: { address } })),
-        // Replies go to the person who made the booking.
-        replyTo: booking.email ? [{ emailAddress: { address: booking.email, name: booking.name } }] : [],
-      },
-      saveToSentItems: false,
-    }),
+  return sendMail({
+    to,
+    subject: subject(booking),
+    html: html(booking),
+    // Replies go to the person who made the booking.
+    replyTo: booking.email ? { address: booking.email, name: booking.name } : null,
   });
-  if (!res.ok) throw new Error(`Graph sendMail failed: ${res.status} ${await res.text()}`);
+}
+
+// Sends one email and reports what happened. It never throws.
+export async function sendMail({ to, subject, html, replyTo }) {
+  const missing = missingSettings();
+  if (missing.length) {
+    return { sent: false, to, reason: `Email settings missing in Netlify: ${missing.join(", ")}. Add them with Functions included in their scopes, then redeploy.` };
+  }
+  try {
+    const token = await getToken();
+    const from = sender();
+    const res = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(from)}/sendMail`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        message: {
+          subject,
+          body: { contentType: "HTML", content: html },
+          toRecipients: to.map((address) => ({ emailAddress: { address } })),
+          replyTo: replyTo ? [{ emailAddress: replyTo }] : [],
+        },
+        saveToSentItems: false,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const code = (data.error && data.error.code) || String(res.status);
+      return { sent: false, to, reason: explainSendError(res.status, code, from) };
+    }
+    return { sent: true, to };
+  } catch (err) {
+    console.error("Booking alert failed", err);
+    return { sent: false, to, reason: err.message };
+  }
 }
 
 async function getToken() {
@@ -63,8 +92,28 @@ async function getToken() {
     }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.access_token) throw new Error(`Graph sign-in failed: ${res.status} ${data.error || ""}`);
-  return data.access_token;
+  if (res.ok && data.access_token) return data.access_token;
+
+  const detail = String(data.error_description || "").split("\r\n")[0];
+  let reason = `Microsoft refused the email app's sign-in (${data.error || res.status}).`;
+  if (/AADSTS7000215|AADSTS7000222/.test(detail)) {
+    reason = "Microsoft rejected GRAPH_CLIENT_SECRET. Check it is the secret's Value, not its Secret ID, and that it has not expired.";
+  } else if (/AADSTS700016/.test(detail)) {
+    reason = "Microsoft could not find the email app. Check GRAPH_CLIENT_ID and GRAPH_TENANT_ID are the right IDs for the alerts app.";
+  } else if (/AADSTS90002|AADSTS900023/.test(detail)) {
+    reason = "Microsoft did not recognise GRAPH_TENANT_ID. Check it is the Directory (tenant) ID.";
+  }
+  throw new Error(reason + (detail ? ` Microsoft said: ${detail}` : ""));
+}
+
+function explainSendError(status, code, from) {
+  if (status === 401 || status === 403 || code === "ErrorAccessDenied") {
+    return `The email app is not allowed to send from ${from} (${code}). Ask IT to check the Mail.Send application permission has admin consent and that the access policy includes this mailbox.`;
+  }
+  if (status === 404 || code === "ErrorInvalidUser" || code === "MailboxNotEnabledForRESTAPI") {
+    return `The mailbox ${from} was not found or cannot send email (${code}). Check IT has created it and that NOTIFY_FROM, if set, is spelt correctly.`;
+  }
+  return `Microsoft could not send the email (${code}).`;
 }
 
 // ---------- the email ----------

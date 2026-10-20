@@ -74,9 +74,15 @@ The alerts are sent through the trust's Microsoft 365 from one mailbox. Until th
 | `NOTIFY_LANCASTER` | Lancaster catering manager |
 | `NOTIFY_SOUTH_WIGSTON` | South Wigston catering manager |
 | `NOTIFY_WOODSTOCK` | Woodstock catering manager |
+| `NOTIFY_CENTRAL_TEAM` | Central Team bookings |
 | `NOTIFY_TRUST` | Copied on every booking, whichever site |
 
-To change who is told, edit these values in Netlify and redeploy. No code changes are needed.
+To change who is told, edit these values in Netlify and redeploy. No code changes are needed. When you add or edit a variable, make sure its scopes include **Functions**, then go to **Deploys** and choose **Trigger deploy**. Netlify only picks up new values on the next deploy.
+
+**Checking alerts are working.** On the admin page:
+
+- Open any booking. Under **Email alert** it says who the alert went to, or why it was not sent. Bookings added with **Add a booking** never send alerts.
+- Choose **Test email alerts**. It sends one test email to you only, not to the managers, and lists where each site's alerts will go. If something is wrong, it says what, for example a missing setting, a rejected secret or a mailbox the app cannot send from.
 
 **What IT needs to set up:** an app registration with the Microsoft Graph application permission `Mail.Send`, with admin consent and a client secret. It should be limited to the sending mailbox only, using RBAC for Applications in Exchange Online or an application access policy. The secret expires, usually after 12 or 24 months, and must be renewed in Netlify before then.
 
