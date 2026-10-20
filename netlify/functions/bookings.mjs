@@ -1,18 +1,20 @@
 // Bookings API for the hospitality form and the catering admin page.
 //
-//   POST   /api/bookings        public, creates a booking request. With the
-//                                admin password it adds a booking on the
-//                                Catering Team's behalf, with looser rules.
-//   GET    /api/bookings        admin, lists every booking
-//   PATCH  /api/bookings/:id    admin, updates status and catering notes
-//   DELETE /api/bookings/:id    admin, deletes a booking
+//   POST   /api/bookings        any signed-in staff member, creates a booking
+//                                request. With "staffEntry": true, the Catering
+//                                Team adds a booking by hand, with looser rules.
+//   GET    /api/bookings        Catering Team, lists every booking
+//   PATCH  /api/bookings/:id    Catering Team, updates status and catering notes
+//   DELETE /api/bookings/:id    Catering Team, deletes a booking
 //
-// Admin requests send the password from the ADMIN_PASSWORD environment
-// variable as "Authorization: Bearer <password>".
+// Every request carries the person's Microsoft sign-in token as
+// "Authorization: Bearer <token>". The Catering Team are the people with the
+// Catering.Admin app role in Entra.
 
 import { getStore } from "@netlify/blobs";
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { notifyNewBooking } from "../lib/notify.mjs";
+import { signedInUser } from "../lib/auth.mjs";
 
 export const config = {
   path: ["/api/bookings", "/api/bookings/:id"],
@@ -29,10 +31,12 @@ const store = () => getStore({ name: "bookings", consistency: "strong" });
 export default async (req, context) => {
   const id = context.params?.id;
   try {
-    if (req.method === "POST" && !id) return await createBooking(req);
-    if (!isAdmin(req)) return json({ error: "Incorrect password." }, 401);
+    const user = await signedInUser(req);
+    if (!user) return json({ error: "Please sign in with your LWLAT Microsoft account." }, 401);
+    if (req.method === "POST" && !id) return await createBooking(req, user);
+    if (!user.isAdmin) return json({ error: "Your account does not have access to the Catering Team page." }, 403);
     if (req.method === "GET" && !id) return await listBookings();
-    if (req.method === "PATCH" && id) return await updateBooking(id, req);
+    if (req.method === "PATCH" && id) return await updateBooking(id, req, user);
     if (req.method === "DELETE" && id) return await deleteBooking(id);
     return json({ error: "Not found." }, 404);
   } catch (err) {
@@ -44,11 +48,17 @@ export default async (req, context) => {
 
 // ---------- handlers ----------
 
-async function createBooking(req) {
-  const staff = req.headers.has("authorization");
-  if (staff && !isAdmin(req)) return json({ error: "Incorrect password." }, 401);
-
+async function createBooking(req, user) {
   const body = await readJson(req);
+  const staff = body.staffEntry === true;
+  if (staff && !user.isAdmin) {
+    return json({ error: "Your account does not have access to add bookings for the Catering Team." }, 403);
+  }
+  // A normal booking is always made in the signed-in person's own name.
+  if (!staff) {
+    body.name = user.name || user.email;
+    body.email = user.email;
+  }
 
   // Honeypot field, hidden from people. Bots tend to fill it in.
   if (body.website) return json({ ok: true, reference: "HB-000000-0000" }, 201);
@@ -64,6 +74,7 @@ async function createBooking(req) {
     booking.status = "New";
     booking.cateringNotes = "";
   }
+  booking.submittedBy = { name: user.name, email: user.email };
   booking.createdAt = now.toISOString();
   booking.updatedAt = booking.createdAt;
 
@@ -89,7 +100,7 @@ async function listBookings() {
   return json({ bookings: bookings.filter(Boolean) });
 }
 
-async function updateBooking(id, req) {
+async function updateBooking(id, req, user) {
   const s = store();
   const booking = await s.get(id, { type: "json" });
   if (!booking) return json({ error: "Booking not found." }, 404);
@@ -103,6 +114,7 @@ async function updateBooking(id, req) {
     booking.cateringNotes = text(body.cateringNotes, 2000);
   }
   booking.updatedAt = new Date().toISOString();
+  booking.updatedBy = user.name || user.email;
 
   await s.setJSON(id, booking);
   return json({ ok: true, booking });
@@ -225,17 +237,6 @@ async function readJson(req) {
   } catch {
     throw new BadRequest("The form could not be read.");
   }
-}
-
-function isAdmin(req) {
-  const expected = process.env.ADMIN_PASSWORD;
-  const header = req.headers.get("authorization") || "";
-  const given = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (!expected || !given) return false;
-  // Hash both sides so the comparison takes the same time whatever the length.
-  const a = createHash("sha256").update(given).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
 }
 
 function makeReference(date) {
