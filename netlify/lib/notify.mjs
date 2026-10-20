@@ -3,7 +3,8 @@
 // until these Netlify environment variables are set:
 //
 //   GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET   from IT's app registration
-//   NOTIFY_FROM          the mailbox the alerts come from, e.g. catering@lwlat.org.uk
+//   NOTIFY_FROM          the mailbox the alerts come from (optional, defaults to
+//                        catering-notifications@lwlat.org.uk)
 //   NOTIFY_BABINGTON, NOTIFY_HEATHERBROOK, NOTIFY_LANCASTER,
 //   NOTIFY_SOUTH_WIGSTON, NOTIFY_WOODSTOCK   who to tell for each site
 //   NOTIFY_TRUST         who to copy on every booking (optional)
@@ -13,6 +14,7 @@
 // Each NOTIFY_ variable can hold several addresses separated by commas.
 
 const env = (name) => (process.env[name] || "").trim();
+const DEFAULT_FROM = "catering-notifications@lwlat.org.uk";
 
 function recipients(site) {
   const key = "NOTIFY_" + site.toUpperCase().replace(/[^A-Z]+/g, "_");
@@ -25,8 +27,8 @@ function recipients(site) {
 
 export async function notifyNewBooking(booking) {
   const to = recipients(booking.site);
-  const from = env("NOTIFY_FROM");
-  if (!to.length || !from || !env("GRAPH_CLIENT_SECRET")) {
+  const from = env("NOTIFY_FROM") || DEFAULT_FROM;
+  if (!to.length || !env("GRAPH_CLIENT_SECRET")) {
     console.log("Booking alert not sent: email settings are not complete.");
     return;
   }

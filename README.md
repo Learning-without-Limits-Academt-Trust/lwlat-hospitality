@@ -43,7 +43,7 @@ The alerts are sent through the trust's Microsoft 365 from one mailbox. Until th
 | `GRAPH_TENANT_ID` | Directory (tenant) ID |
 | `GRAPH_CLIENT_ID` | Application (client) ID of the email app |
 | `GRAPH_CLIENT_SECRET` | The client secret value. Mark it as secret in Netlify. |
-| `NOTIFY_FROM` | The mailbox alerts come from, for example `catering@lwlat.org.uk` |
+| `NOTIFY_FROM` | Optional. The mailbox alerts come from. If left out, `catering-notifications@lwlat.org.uk` is used. |
 
 **Who gets told.** Add one key per site. Each can hold several addresses separated by commas.
 
