@@ -12,6 +12,7 @@
 
 import { getStore } from "@netlify/blobs";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { notifyNewBooking } from "../lib/notify.mjs";
 
 export const config = {
   path: ["/api/bookings", "/api/bookings/:id"],
@@ -67,6 +68,17 @@ async function createBooking(req) {
   booking.updatedAt = booking.createdAt;
 
   await store().setJSON(booking.id, booking);
+
+  // Tell the site's catering manager. Bookings the team adds themselves need
+  // no alert, and a failed email must not lose the booking.
+  if (!staff) {
+    try {
+      await notifyNewBooking(booking);
+    } catch (err) {
+      console.error("Booking alert failed", booking.id, err);
+    }
+  }
+
   return json({ ok: true, reference: booking.id }, 201);
 }
 

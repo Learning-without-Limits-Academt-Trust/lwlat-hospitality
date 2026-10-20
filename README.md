@@ -30,6 +30,36 @@ Everything runs on Netlify. Bookings are stored in Netlify's own storage (Netlif
 
 To change the password, edit `ADMIN_PASSWORD` in Netlify and redeploy. Anyone who is signed in will be asked for the new one.
 
+## Email alerts for catering managers
+
+When someone sends a booking, the catering manager for that site gets an email with the full order, any allergy details and a link to the bookings page. A trust contact can be copied on every booking. Replying to the alert goes to the person who made the booking. Bookings the Catering Team adds themselves do not send an alert.
+
+The alerts are sent through the trust's Microsoft 365 from one mailbox. Until the settings below are in place, bookings still work but no alerts are sent.
+
+**From IT** (see the request below), add these in Netlify under **Site configuration**, then **Environment variables**:
+
+| Key | Value |
+| --- | --- |
+| `GRAPH_TENANT_ID` | Directory (tenant) ID |
+| `GRAPH_CLIENT_ID` | Application (client) ID of the email app |
+| `GRAPH_CLIENT_SECRET` | The client secret value. Mark it as secret in Netlify. |
+| `NOTIFY_FROM` | The mailbox alerts come from, for example `catering@lwlat.org.uk` |
+
+**Who gets told.** Add one key per site. Each can hold several addresses separated by commas.
+
+| Key | Who it is for |
+| --- | --- |
+| `NOTIFY_BABINGTON` | Babington catering manager |
+| `NOTIFY_HEATHERBROOK` | Heatherbrook catering manager |
+| `NOTIFY_LANCASTER` | Lancaster catering manager |
+| `NOTIFY_SOUTH_WIGSTON` | South Wigston catering manager |
+| `NOTIFY_WOODSTOCK` | Woodstock catering manager |
+| `NOTIFY_TRUST` | Copied on every booking, whichever site |
+
+To change who is told, edit these values in Netlify and redeploy. No code changes are needed.
+
+**What IT needs to set up:** an app registration with the Microsoft Graph application permission `Mail.Send`, with admin consent and a client secret. It should be limited to the sending mailbox only, using RBAC for Applications in Exchange Online or an application access policy. The secret expires, usually after 12 or 24 months, and must be renewed in Netlify before then.
+
 ## Changing the menus or notice period
 
 Open `public/index.html` and look for the section headed **settings the Catering Team may want to change** near the bottom. You can edit:
