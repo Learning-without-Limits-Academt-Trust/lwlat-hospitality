@@ -34,7 +34,8 @@
     }
     .board-head h1 { font-size: clamp(1.7rem, 3.5vw, 2.2rem); font-weight: 800; }
     .board-head p { color: var(--muted); margin-top: 4px; }
-    .head-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .head-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+    .head-actions .btn:first-child { order: 1; margin-left: 6px; }
 
     .tabs {
       display: flex; flex-wrap: wrap; gap: 4px;
@@ -53,8 +54,8 @@
       border-radius: var(--radius-s) var(--radius-s) 0 0;
     }
     .tab:hover { color: var(--ink); background: var(--teal-wash); }
-    .tab[aria-selected="true"] { color: var(--ink); }
-    .tab[aria-selected="true"]::after {
+    .tab[aria-pressed="true"] { color: var(--ink); }
+    .tab[aria-pressed="true"]::after {
       content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px;
       height: 4px; border-radius: 2px; background: var(--teal);
     }
@@ -109,6 +110,7 @@
     .ticket .t-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
     .ticket .t-people { font-weight: 700; white-space: nowrap; }
 
+    .result-count { margin-top: 16px; color: var(--muted); font-size: 0.95rem; }
     .empty-state {
       margin-top: 32px;
       padding: 32px;
@@ -179,6 +181,16 @@
     .status-btn[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
     .dlg-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; margin-top: 24px; }
     .dlg-actions > div { display: flex; flex-wrap: wrap; gap: 10px; }
+    .confirm-delete {
+      margin-top: 18px;
+      padding: 16px;
+      border: 2px solid var(--no);
+      border-radius: var(--radius-s);
+      background: var(--no-bg);
+    }
+    .confirm-delete > div { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .btn-delete { background: var(--no); border-color: var(--no); }
+    .btn-delete:hover { background: #6e1414; border-color: #6e1414; }
     .saved-msg { color: var(--ok); font-weight: 700; align-self: center; }
 
     .print-title { display: none; }
@@ -238,17 +250,17 @@
         </div>
         <div class="head-actions">
           <a class="btn" href="/?staff">Add a booking</a>
-          <button type="button" class="btn btn-quiet" id="refresh-btn">Refresh</button>
-          <button type="button" class="btn btn-quiet" id="csv-btn">Download spreadsheet</button>
-          <button type="button" class="btn btn-quiet" id="print-btn">Print list</button>
+          <button type="button" class="btn btn-text" id="refresh-btn">Refresh</button>
+          <button type="button" class="btn btn-text" id="csv-btn">Download spreadsheet</button>
+          <button type="button" class="btn btn-text" id="print-btn">Print list</button>
         </div>
       </div>
 
-      <div class="tabs" role="tablist" aria-label="Which bookings to show">
-        <button class="tab" role="tab" data-view="new" aria-selected="true">Needs a reply<span class="count" id="count-new"></span></button>
-        <button class="tab" role="tab" data-view="upcoming" aria-selected="false">Upcoming</button>
-        <button class="tab" role="tab" data-view="past" aria-selected="false">Past</button>
-        <button class="tab" role="tab" data-view="all" aria-selected="false">All</button>
+      <div class="tabs" role="group" aria-label="Which bookings to show">
+        <button type="button" class="tab" data-view="new" aria-pressed="true">Needs a reply<span class="count" id="count-new"></span></button>
+        <button type="button" class="tab" data-view="upcoming" aria-pressed="false">Upcoming</button>
+        <button type="button" class="tab" data-view="past" aria-pressed="false">Past</button>
+        <button type="button" class="tab" data-view="all" aria-pressed="false">All</button>
       </div>
 
       <div class="filters">
@@ -284,6 +296,7 @@
 
       <p class="print-title" id="print-title"></p>
       <div class="notice notice-error load-error" id="load-error" hidden></div>
+      <p class="result-count" id="result-count" role="status"></p>
       <div id="rail"></div>
     </section>
   </main>
@@ -384,7 +397,7 @@
     document.querySelectorAll(".tab").forEach((tab) => {
       tab.addEventListener("click", () => {
         view = tab.dataset.view;
-        document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+        document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-pressed", String(t === tab)));
         render();
       });
     });
@@ -423,7 +436,8 @@
       $("count-new").textContent = newCount ? String(newCount) : "";
 
       const list = filtered();
-      const tabName = document.querySelector('.tab[aria-selected="true"]').firstChild.textContent;
+      $("result-count").textContent = `Showing ${list.length} booking${list.length === 1 ? "" : "s"}`;
+      const tabName = document.querySelector('.tab[aria-pressed="true"]').firstChild.textContent;
       $("print-title").textContent = `LWLAT catering bookings: ${tabName} (printed ${new Date().toLocaleDateString("en-GB")})`;
 
       if (!list.length) {
@@ -550,12 +564,28 @@
             ${b.email ? `<a class="btn btn-quiet" href="mailto:${esc(b.email)}?subject=${subject}">Email ${esc(b.name.split(" ")[0])}</a>` : ""}
             <button type="button" class="btn btn-danger" id="d-delete">Delete booking</button>
           </div>
+        </div>
+        <div class="confirm-delete" id="d-confirm" role="alertdialog" aria-labelledby="d-confirm-text" hidden>
+          <p id="d-confirm-text"><strong>Delete this booking?</strong> It will be removed for the whole Catering Team and cannot be undone.</p>
+          <div>
+            <button type="button" class="btn btn-delete" id="d-delete-yes">Delete booking</button>
+            <button type="button" class="btn btn-quiet" id="d-delete-no">Keep booking</button>
+          </div>
+          <p class="err" id="d-delete-err" hidden></p>
         </div>`;
 
       $("d-body").querySelectorAll(".status-btn").forEach((btn) =>
         btn.addEventListener("click", () => save({ status: btn.dataset.status }, `Marked as ${btn.dataset.status}`)));
       $("d-save").addEventListener("click", () => save({ cateringNotes: $("d-notes").value }, "Notes saved"));
-      $("d-delete").addEventListener("click", remove);
+      $("d-delete").addEventListener("click", () => {
+        $("d-confirm").hidden = false;
+        $("d-delete-no").focus();
+      });
+      $("d-delete-no").addEventListener("click", () => {
+        $("d-confirm").hidden = true;
+        $("d-delete").focus();
+      });
+      $("d-delete-yes").addEventListener("click", remove);
 
       if (!$("detail").open) $("detail").showModal();
     }
@@ -577,15 +607,16 @@
     }
 
     async function remove() {
-      const b = bookings.find((x) => x.id === openId);
-      if (!confirm(`Delete the booking "${b.eventName}" (${b.id})? This cannot be undone.`)) return;
       try {
         await api(`/api/bookings/${encodeURIComponent(openId)}`, { method: "DELETE" });
         bookings = bookings.filter((x) => x.id !== openId);
         $("detail").close();
         render();
       } catch (err) {
-        if (err.message !== "signed-out") alert("The booking was not deleted. " + err.message);
+        if (err.message !== "signed-out") {
+          $("d-delete-err").textContent = "The booking was not deleted. " + err.message;
+          $("d-delete-err").hidden = false;
+        }
       }
     }
 
