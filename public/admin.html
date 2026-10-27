@@ -179,6 +179,7 @@
     }
     .dlg-head h2 { font-size: 1.4rem; font-weight: 800; }
     .dlg-head .ref { color: var(--muted); font-size: 0.95rem; margin-top: 2px; }
+    .dlg-head-actions { flex: none; display: flex; gap: 8px; align-items: flex-start; }
     .dlg-close {
       flex: none;
       width: 44px; height: 44px;
@@ -254,7 +255,12 @@
       .dlg-head, .dlg-body { padding-left: 16px; padding-right: 16px; }
     }
 
+    .print-order { display: none; }
+
     @media print {
+      /* Printing one order: show only the order sheet. */
+      body.printing-order > *:not(#print-order) { display: none !important; }
+      body.printing-order .print-order { display: block; }
       body { background: #fff; font-size: 11pt; }
       .band, .schools, .board-head, .tabs, .filters, .site-footer, dialog, .alert-test, .result-count { display: none !important; }
       .print-title { display: block; font-size: 16pt; font-weight: 800; margin-bottom: 8pt; }
@@ -263,6 +269,41 @@
       .ticket { break-inside: avoid; padding: 8pt 0; box-shadow: none !important; }
       .allergy { box-shadow: inset 0 0 0 1.5px #000; color: #000; background: #fff; }
     }
+    /* ---------- printed order sheet (A4, black and white friendly) ---------- */
+    @page { margin: 14mm; }
+    .po { color: #000; font-size: 12pt; line-height: 1.4; }
+    .po-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12pt; padding-bottom: 8pt; border-bottom: 3pt solid #000; }
+    .po-top .po-org { font-size: 11pt; }
+    .po-top .po-org strong { display: block; font-size: 15pt; }
+    .po-ref { text-align: right; }
+    .po-ref span { display: block; font-size: 10pt; }
+    .po-ref strong { font-size: 22pt; letter-spacing: 0.02em; }
+    .po-when { margin-top: 10pt; font-size: 18pt; font-weight: 800; }
+    .po-what { font-size: 13pt; margin-top: 2pt; }
+    .po-allergy { margin-top: 10pt; padding: 6pt 10pt; border: 3pt solid #000; }
+    .po-allergy strong { display: block; font-size: 14pt; }
+    .po-allergy.none { border-width: 1pt; }
+    .po-allergy.none strong { font-size: 12pt; }
+    .po h3 { font-size: 13pt; margin: 10pt 0 3pt; }
+    .po-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14pt; }
+    .po table { width: 100%; border-collapse: collapse; }
+    .po th, .po td { text-align: left; vertical-align: top; padding: 4pt 6pt 4pt 0; border-bottom: 1pt solid #999; }
+    .po th.tick { text-align: center; }
+    .po td.tick { text-align: center; }
+    .po th { font-size: 10pt; }
+    .po td.qty { width: 18mm; font-size: 14pt; font-weight: 800; text-align: right; padding-right: 10pt; }
+    .po td.tick { width: 12mm; }
+    .po .box { display: inline-block; width: 7mm; height: 7mm; border: 1.5pt solid #000; }
+    .po .total td { border-bottom: 0; font-weight: 800; }
+    .po dl { display: grid; grid-template-columns: 26mm 1fr; gap: 2pt 8pt; margin: 0; }
+    .po dd { overflow-wrap: anywhere; }
+    .po dt { font-weight: 700; }
+    .po dd { margin: 0; white-space: pre-line; }
+    .po-notes { white-space: pre-line; padding: 6pt 8pt; border: 1pt solid #999; }
+    .po-sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10pt; margin-top: 26pt; break-inside: avoid; }
+    .po-sign div { border-top: 1pt solid #000; padding-top: 3pt; font-size: 10pt; }
+    .po-foot { margin-top: 14pt; font-size: 9pt; color: #333; }
+    .po section, .po table, .po-allergy { break-inside: avoid; }
   </style>
 </head>
 <body>
@@ -361,10 +402,16 @@
         <h2 id="d-title"></h2>
         <p class="ref" id="d-ref"></p>
       </div>
-      <button type="button" class="dlg-close" id="d-close" aria-label="Close">&times;</button>
+      <div class="dlg-head-actions">
+        <button type="button" class="btn btn-quiet" id="d-print">Print order</button>
+        <button type="button" class="dlg-close" id="d-close" aria-label="Close">&times;</button>
+      </div>
     </div>
     <div class="dlg-body" id="d-body"></div>
   </dialog>
+
+  <!-- Filled in when a single order is printed. Hidden on screen. -->
+  <article class="print-order" id="print-order" aria-hidden="true"></article>
 
   <footer class="site-footer">
     <div class="wrap"><p>Booking details are for the Catering Team only. Do not share or print more than you need.</p></div>
@@ -757,6 +804,70 @@
     // ---------- export and print ----------
 
     $("print-btn").addEventListener("click", () => window.print());
+
+    // ---------- printing one order ----------
+
+    function printOrder(b) {
+      const lines = (s) => esc(s);
+      let items;
+      if (b.type === "hospitality") {
+        items = `<table><thead><tr><th>Item</th><th class="tick">Done</th></tr></thead><tbody>
+          ${(b.hospitalityItems || []).map((i) => `<tr><td>${esc(i)}</td><td class="tick"><span class="box"></span></td></tr>`).join("")}
+          </tbody></table>
+          ${b.hospitalityDetails ? `<h3>Quantities and menu requests</h3><p class="po-notes">${lines(b.hospitalityDetails)}</p>` : ""}`;
+      } else {
+        const rows = Object.entries(b.lunches || {});
+        const total = rows.reduce((n, [, v]) => n + v, 0);
+        items = `<table><thead><tr><th>Quantity</th><th>Lunch</th><th class="tick">Done</th></tr></thead><tbody>
+          ${rows.map(([k, v]) => `<tr><td class="qty">${v}</td><td>${esc(k)}${k === BESPOKE && b.bespokeDetails ? `<br><em>${esc(b.bespokeDetails)}</em>` : ""}</td><td class="tick"><span class="box"></span></td></tr>`).join("")}
+          <tr class="total"><td class="qty">${total}</td><td>lunches in total</td><td></td></tr>
+          </tbody></table>`;
+      }
+      const fact = (label, val) => val ? `<dt>${label}</dt><dd>${val}</dd>` : "";
+      const handover = b.type === "hospitality"
+        ? fact("Serve at", esc(b.venue))
+        : fact("Method", esc(b.fulfilment)) + fact("Deliver to", lines(b.address)) +
+          fact("Receiver", [esc(b.receiverName), esc(b.receiverPhone)].filter(Boolean).join(", "));
+      const notes = ($("d-notes") ? $("d-notes").value : b.cateringNotes || "").trim();
+
+      $("print-order").innerHTML = `<div class="po">
+        <div class="po-top">
+          <div class="po-org"><strong>Catering order</strong>Learning Without Limits Academy Trust</div>
+          <div class="po-ref"><span>Reference</span><strong>${esc(b.id)}</strong></div>
+        </div>
+        <p class="po-when">${esc(longDate(b.date))}${b.time ? `, ${esc(b.time)}` : ""}</p>
+        <p class="po-what">${esc(b.site)}. ${b.type === "hospitality" ? "Hospitality" : "Packed lunches"} for ${esc(b.people)} people. <strong>${esc(b.eventName)}</strong></p>
+
+        ${b.dietary === "Yes"
+          ? `<div class="po-allergy"><strong>Dietary needs or allergies</strong>${lines(b.dietaryDetails)}</div>`
+          : `<div class="po-allergy none"><strong>No dietary needs or allergies given</strong></div>`}
+
+        <section><h3>Order</h3>${items}</section>
+
+        ${b.notes ? `<section><h3>From the booker</h3><p class="po-notes">${lines(b.notes)}</p></section>` : ""}
+        ${notes ? `<section><h3>Catering Team notes</h3><p class="po-notes">${esc(notes)}</p></section>` : ""}
+
+        <div class="po-cols">
+          <section><h3>${b.type === "hospitality" ? "Where" : "Handover"}</h3><dl>${handover}</dl></section>
+          <section><h3>Booked by</h3><dl>
+            ${fact("Name", esc(b.name))}${fact("Department", esc(b.department))}
+            ${fact("Telephone", esc(b.phone))}${fact("Email", esc(b.email))}${fact("Cost centre", esc(b.costCentre))}
+            ${fact("Status", esc(b.status))}
+          </dl></section>
+        </div>
+
+        <div class="po-sign"><div>Prepared by</div><div>Checked by</div><div>${b.type === "hospitality" ? "Served" : "Handed over"} at (time)</div></div>
+        <p class="po-foot">Printed ${esc(new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }))}${me && me.name ? ` by ${esc(me.name)}` : ""}. Contains personal details: keep in the kitchen and shred after the event.</p>
+      </div>`;
+
+      document.body.classList.add("printing-order");
+      window.print();
+    }
+    window.addEventListener("afterprint", () => document.body.classList.remove("printing-order"));
+    $("d-print").addEventListener("click", () => {
+      const b = bookings.find((x) => x.id === openId);
+      if (b) printOrder(b);
+    });
 
     // ---------- replying to the booker ----------
 

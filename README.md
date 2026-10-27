@@ -145,6 +145,7 @@ Put the site address in front, for example `https://lwlat-hospitality.netlify.ap
 - Select a booking to see everything about it, change its status, add private notes for the team, or email the person who booked.
 - **Download spreadsheet** saves the bookings you are looking at as a CSV file that opens in Excel.
 - **Print list** prints the bookings you are looking at as a kitchen sheet.
+- **Print order**, at the top of each booking, prints that one order on a single A4 page for the kitchen: the reference, date and time, any allergies in a heavy box, the order as a checklist with tick boxes, handover details, notes, and lines for prepared by, checked by and handed over. Unsaved Catering Team notes are included.
 
 The site does not send emails by itself. The Catering Team confirms each booking by email using the **Email** button on the booking.
 
