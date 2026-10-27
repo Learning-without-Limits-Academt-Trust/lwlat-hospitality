@@ -100,6 +100,30 @@ Keep each item inside quotation marks and followed by a comma. Old bookings keep
 
 Save the logo as `public/lwlat-logo.svg` (or a PNG, and change the file name to match). Then remove the word `hidden` from the `<img>` line near the top of `index.html` and `admin.html`.
 
+## Booking references
+
+Each booking gets a reference made of the site's code, the booking date as ddmmyy, and a number counting up from 001 for that site and date. For example, the first South Wigston booking for 27 October 2026 is `swhs271026001`, and the next one for that day is `swhs271026002`.
+
+| Site | Code |
+| --- | --- |
+| Babington | `ba` |
+| Heatherbrook | `hpa` |
+| Lancaster | `la` |
+| South Wigston | `swhs` |
+| Woodstock | `wpa` |
+| Central Team | `ct` |
+
+To change a code, edit `SITE_CODES` near the top of `netlify/functions/bookings.mjs`. Existing bookings keep their reference.
+
+## Replying to a booking
+
+Open a booking on the admin page. The box at the top has two buttons:
+
+- **Confirm order and email [name]** marks the booking Confirmed and emails the booker straight away with their order details. Replies come to the team member who confirmed it. The box then shows who it was sent to and when. If the email could not be sent, it says why and offers a link to email the booker yourself.
+- **Ask for more information** opens a ready-addressed email in Outlook (or whichever email app the computer uses), with the reference in the subject. Type your question and send it. The booking is marked **Info requested** so the team can see it is waiting on the booker.
+
+The status buttons further down change the status without sending any email.
+
 ## How the admin page works
 
 - **Needs a reply** shows new requests. The number on the tab is how many are waiting.

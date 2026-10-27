@@ -249,6 +249,7 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
   white-space: nowrap;
 }
 .pill-New { background: var(--teal-wash); color: var(--teal-deep); box-shadow: inset 0 0 0 1.5px var(--teal-deep); }
+.pill-Info-requested { background: var(--alert-bg); color: var(--alert); box-shadow: inset 0 0 0 1.5px var(--alert-line); }
 .pill-Confirmed { background: var(--ok-bg); color: var(--ok); }
 .pill-Declined { background: var(--no-bg); color: var(--no); }
 .pill-Cancelled { background: var(--grey-bg); color: var(--grey); }

@@ -37,12 +37,37 @@ export async function notifyNewBooking(booking) {
   if (!to.length) {
     return { sent: false, to, reason: `No alert address is set for ${booking.site}. Add ${siteKey(booking.site)} or NOTIFY_TRUST in Netlify, then redeploy.` };
   }
+  const adminUrl = (env("SITE_URL") || env("URL")).replace(/\/$/, "") + "/admin";
   return sendMail({
     to,
     subject: subject(booking),
-    html: html(booking),
+    html: bookingEmail(booking, {
+      banner: `New ${booking.type === "hospitality" ? "hospitality" : "packed lunch"} booking for ${esc(booking.site)}`,
+      button: { href: adminUrl, label: "Open the bookings page" },
+      footer: `Replying to this email will go to ${esc(booking.name)}. To confirm the booking, open it on the bookings page and choose Confirm order.`,
+    }),
     // Replies go to the person who made the booking.
     replyTo: booking.email ? { address: booking.email, name: booking.name } : null,
+  });
+}
+
+// Tells the booker their order is confirmed. Replies go to the team member
+// who confirmed it.
+export async function sendBookingConfirmation(booking, confirmer) {
+  if (!booking.email) {
+    return { sent: false, to: [], reason: "This booking has no email address for the booker." };
+  }
+  const first = String(booking.name || "").trim().split(/\s+/)[0];
+  return sendMail({
+    to: [booking.email],
+    subject: `Booking confirmed: ${booking.eventName}, ${shortDate(booking.date)} (${booking.id})`,
+    html: bookingEmail(booking, {
+      banner: "Your catering booking is confirmed",
+      intro: `<p style="margin:0 0 12px">Hello ${esc(first || booking.name)},</p>
+        <p style="margin:0 0 16px">The Catering Team has confirmed your booking. The details are below. If anything changes, or if something is not right, please reply to this email.</p>`,
+      footer: `Confirmed by ${esc(confirmer.name || confirmer.email)}, Catering Team, Learning Without Limits Academy Trust.`,
+    }),
+    replyTo: confirmer.email ? { address: confirmer.email, name: confirmer.name } : null,
   });
 }
 
@@ -123,8 +148,7 @@ function subject(b) {
   return `New catering booking: ${b.eventName}, ${b.site}, ${shortDate(b.date)}${allergy}`;
 }
 
-function html(b) {
-  const adminUrl = (env("SITE_URL") || env("URL")).replace(/\/$/, "") + "/admin";
+function bookingEmail(b, { banner, intro = "", button = null, footer }) {
   const row = (label, value) => value
     ? `<tr><td style="padding:6px 16px 6px 0;color:#4b6664;vertical-align:top;white-space:nowrap">${label}</td><td style="padding:6px 0;vertical-align:top">${value}</td></tr>`
     : "";
@@ -148,13 +172,15 @@ function html(b) {
     : "";
 
   return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#15302f;max-width:600px">
-    <div style="background:#009f9a;color:#fff;padding:14px 18px;border-radius:6px 6px 0 0;font-weight:bold">
-      New ${b.type === "hospitality" ? "hospitality" : "packed lunch"} booking for ${esc(b.site)}
+    <div style="background:#009f9a;color:#fff;padding:14px 18px;border-radius:6px 6px 0 0;font-weight:bold;font-size:17px">
+      ${banner}
     </div>
     <div style="border:1px solid #c8dddb;border-top:0;padding:16px 18px;border-radius:0 0 6px 6px">
+      ${intro}
       <p style="margin:0 0 12px"><strong style="font-size:17px">${esc(b.eventName)}</strong><br>Reference ${esc(b.id)}</p>
       ${allergy}
       <table style="border-collapse:collapse">
+        ${row("Site", esc(b.site))}
         ${row("Date", esc(longDate(b.date)))}
         ${row("Time", esc(b.time))}
         ${row("Number of people", esc(b.people))}
@@ -165,8 +191,8 @@ function html(b) {
         ${row("Telephone", esc(b.phone))}
         ${row("Cost centre", esc(b.costCentre))}
       </table>
-      <p style="margin:20px 0 0"><a href="${esc(adminUrl)}" style="display:inline-block;background:#00706c;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold">Open the bookings page</a></p>
-      <p style="margin:16px 0 0;color:#4b6664;font-size:13px">Replying to this email will go to ${esc(b.name)}. Please confirm or decline the booking on the bookings page.</p>
+      ${button ? `<p style="margin:20px 0 0"><a href="${esc(button.href)}" style="display:inline-block;background:#00706c;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold">${esc(button.label)}</a></p>` : ""}
+      <p style="margin:16px 0 0;color:#4b6664;font-size:13px">${footer}</p>
     </div>
   </div>`;
 }
