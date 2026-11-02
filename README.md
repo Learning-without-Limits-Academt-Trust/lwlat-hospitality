@@ -96,9 +96,15 @@ Open `public/index.html` and look for the section headed **settings the Catering
 
 Keep each item inside quotation marks and followed by a comma. Old bookings keep the wording they were made with.
 
+## Design
+
+The pages follow the LwLAT Pulse "Concept C" design (brand guidelines v1.0): a fixed teal backdrop with a faint grid and ring arcs, white "window" cards, glass pills, an orange notice bar and light-green focus rings. Colours are the brand palette only, defined at the top of `public/styles.css`. Source Sans 3 stands in for The Sans, the brand typeface. If the trust has a web licence for The Sans, add its files and put its name first in `--font`.
+
+To keep text readable, the bright mission teal sits at the top right of the backdrop rather than the top left, and small white text on teal always has a dark glass backing. All text on the backdrop meets WCAG AA.
+
 ## Adding the trust logo
 
-Save the logo as `public/lwlat-logo.svg` (or a PNG, and change the file name to match). Then remove the word `hidden` from the `<img>` line near the top of `index.html` and `admin.html`.
+Save the white (reversed) master logo as `public/lwlat-logo.svg` (or a PNG, and change the file name to match). Then, near the top of `index.html` and `admin.html`, remove the word `hidden` from the `<img>` line and delete the `wordmark-text` line under it. Keep the logo at least 120px wide with the brand clear space.
 
 ## Booking references
 

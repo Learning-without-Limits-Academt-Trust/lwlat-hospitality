@@ -65,7 +65,7 @@ export async function sendBookingConfirmation(booking, confirmer) {
       banner: "Your catering booking is confirmed",
       intro: `<p style="margin:0 0 12px">Hello ${esc(first || booking.name)},</p>
         <p style="margin:0 0 16px">The Catering Team has confirmed your booking. The details are below. If anything changes, or if something is not right, please reply to this email.</p>`,
-      footer: `Confirmed by ${esc(confirmer.name || confirmer.email)}, Catering Team, Learning Without Limits Academy Trust.`,
+      footer: `Confirmed by ${esc(confirmer.name || confirmer.email)}, Catering Team, Learning without Limits Academy Trust.`,
     }),
     replyTo: confirmer.email ? { address: confirmer.email, name: confirmer.name } : null,
   });
@@ -150,7 +150,7 @@ function subject(b) {
 
 function bookingEmail(b, { banner, intro = "", button = null, footer }) {
   const row = (label, value) => value
-    ? `<tr><td style="padding:6px 16px 6px 0;color:#4b6664;vertical-align:top;white-space:nowrap">${label}</td><td style="padding:6px 0;vertical-align:top">${value}</td></tr>`
+    ? `<tr><td style="padding:6px 16px 6px 0;color:#636466;vertical-align:top;white-space:nowrap">${label}</td><td style="padding:6px 0;vertical-align:top">${value}</td></tr>`
     : "";
 
   let order;
@@ -167,15 +167,15 @@ function bookingEmail(b, { banner, intro = "", button = null, footer }) {
   }
 
   const allergy = b.dietary === "Yes"
-    ? `<p style="margin:16px 0;padding:12px 14px;background:#fff0e3;border:2px solid #eaa77c;border-radius:6px;color:#8a2c0d">
-         <strong>Dietary needs or allergies</strong><br><span style="color:#15302f">${esc(b.dietaryDetails).replace(/\n/g, "<br>")}</span></p>`
+    ? `<p style="margin:16px 0;padding:12px 14px;background:#FEF3D1;border:2px solid #F5BA19;border-radius:6px;color:#1F1F1F">
+         <strong>Dietary needs or allergies</strong><br><span style="color:#1F1F1F">${esc(b.dietaryDetails).replace(/\n/g, "<br>")}</span></p>`
     : "";
 
-  return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#15302f;max-width:600px">
-    <div style="background:#009f9a;color:#fff;padding:14px 18px;border-radius:6px 6px 0 0;font-weight:bold;font-size:17px">
+  return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#1F1F1F;max-width:600px">
+    <div style="background:#00706A;color:#fff;padding:14px 18px;border-radius:6px 6px 0 0;font-weight:bold;font-size:17px">
       ${banner}
     </div>
-    <div style="border:1px solid #c8dddb;border-top:0;padding:16px 18px;border-radius:0 0 6px 6px">
+    <div style="border:1px solid #D3E2E1;border-top:0;padding:16px 18px;border-radius:0 0 6px 6px">
       ${intro}
       <p style="margin:0 0 12px"><strong style="font-size:17px">${esc(b.eventName)}</strong><br>Reference ${esc(b.id)}</p>
       ${allergy}
@@ -191,8 +191,8 @@ function bookingEmail(b, { banner, intro = "", button = null, footer }) {
         ${row("Telephone", esc(b.phone))}
         ${row("Cost centre", esc(b.costCentre))}
       </table>
-      ${button ? `<p style="margin:20px 0 0"><a href="${esc(button.href)}" style="display:inline-block;background:#00706c;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold">${esc(button.label)}</a></p>` : ""}
-      <p style="margin:16px 0 0;color:#4b6664;font-size:13px">${footer}</p>
+      ${button ? `<p style="margin:20px 0 0"><a href="${esc(button.href)}" style="display:inline-block;background:#00706A;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold">${esc(button.label)}</a></p>` : ""}
+      <p style="margin:16px 0 0;color:#636466;font-size:13px">${footer}</p>
     </div>
   </div>`;
 }
