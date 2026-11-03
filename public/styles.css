@@ -1,29 +1,39 @@
-/* LWLAT catering bookings: shared styles for the booking form and admin page. */
+/* LwLAT catering bookings: shared styles for the booking form and admin page.
+   Follows the LwLAT Pulse "Concept C" design language (brand guidelines v1.0):
+   an immersive teal backdrop with white "window" cards. */
 
 :root {
-  --teal: #009f9a;        /* trust teal, used for the band and accents */
-  --teal-deep: #00706c;   /* darker shade for buttons and links, readable with white text */
-  --teal-wash: #e7f4f3;
-  --ink: #15302f;
-  --muted: #4b6664;
+  /* Brand palette (Brand Guidelines pp. 9-10) */
+  --mission: #098F88;     /* lead colour, the bright part of the backdrop */
+  --teal-deep: #00706A;   /* darkest teal: small text on white, primary buttons */
+  --teal: #009189;        /* icon tiles, ticks */
+  --teal-shade: #00524E;  /* depth only, the backdrop edges and dark glass */
+  --orange: #F5BA19;      /* announcement bar, deadlines. Dark text only. */
+  --lime: #ACCE33;        /* light green: highlights, focus ring. Dark text only. */
+  --green: #73A434;       /* dark green: rings and accents, never small text */
+  --red: #CE153F;
+  --purple: #6F2789;
+  --muted: #636466;       /* grey: secondary text */
+  --ink: #1F1F1F;         /* near-black: body text on white */
+  --teal-wash: #E6F4F3;
+  --tint: #F2F7F7;
   --paper: #ffffff;
-  --page: #f3f8f7;
-  --line: #c8dddb;
-  --line-strong: #8fb3b0;
-  --alert: #8a2c0d;
-  --alert-bg: #fff0e3;
-  --alert-line: #eaa77c;
-  --ok: #17603a;
-  --ok-bg: #e5f4ea;
-  --no: #8f1d1d;
-  --no-bg: #fbe9e9;
-  --grey: #55605f;
-  --grey-bg: #eceeee;
-  --focus: #f2b705;
 
-  --radius-s: 6px;
-  --radius-m: 10px;
-  --font: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --line: #D3E2E1;
+  --line-strong: #9AB9B7;
+  --alert-bg: #FEF3D1;
+  --no: #B3103A;
+  --no-bg: #FCE9EE;
+  --grey-bg: #ECEDED;
+  --glass-dark: rgba(0, 70, 66, 0.72);
+  --ok: var(--teal-deep);
+  --alert: var(--ink);
+  --alert-line: var(--orange);
+
+  --radius-s: 12px;
+  --radius-m: 24px;
+  --shadow-card: 0 28px 60px -24px rgba(0, 38, 36, 0.6), 0 8px 22px rgba(0, 38, 36, 0.18);
+  --font: "Source Sans 3", "The Sans", system-ui, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -32,7 +42,8 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background: var(--page);
+  min-height: 100vh;
+  background: var(--teal-deep);
   color: var(--ink);
   font-family: var(--font);
   font-size: 1.0625rem;
@@ -40,21 +51,21 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-h1, h2, h3 { line-height: 1.2; margin: 0; }
+h1, h2, h3 { line-height: 1.15; margin: 0; }
 p { margin: 0; }
 a { color: var(--teal-deep); }
 [hidden] { display: none !important; }
 
-/* Yellow inner ring with a dark outer ring: visible on white and on teal. */
+/* Light-green ring outside a darkest-teal ring: visible on white and on teal. */
 :focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid var(--lime);
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px var(--focus);
+  box-shadow: 0 0 0 2px var(--teal-deep);
 }
 
 .wrap {
   width: 100%;
-  max-width: 1160px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 16px;
 }
@@ -67,46 +78,194 @@ a { color: var(--teal-deep); }
   white-space: nowrap;
 }
 
-/* ---------- trust band ---------- */
+/* ---------- fixed backdrop: gradient, faint grid and ring arcs ---------- */
 
-.band {
-  background: var(--teal);
-  color: #fff;
+/* The bright mission teal sits top right, so headlines and text, which sit
+   top left, are always on the darker teal and keep their contrast. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 100% 0%, var(--mission) 0%, var(--teal-deep) 24%, var(--teal-shade) 85%);
 }
+.backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 50px 50px;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 80%);
+  mask-image: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 80%);
+}
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 70px solid rgba(0, 82, 78, 0.45);
+}
+.ring-1 { width: 900px; height: 900px; right: -420px; bottom: -480px; }
+.ring-2 { width: 560px; height: 560px; left: -300px; top: 38%; border-width: 50px; }
+.ring-3 { width: 1100px; height: 1100px; right: -560px; bottom: -640px; border: 2px solid var(--green); opacity: 0.4; }
+
+/* ---------- header ---------- */
+
+.band { color: #fff; }
 .band .wrap {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 76px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  min-height: 84px;
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
+.brand { display: flex; align-items: center; gap: 18px; min-width: 0; }
 .wordmark {
   display: flex;
   align-items: center;
-  gap: 12px;
   color: #fff;
   text-decoration: none;
+  min-width: 120px;
 }
 .wordmark img { height: 48px; width: auto; display: block; }
+/* Stays bold and 19px or larger, so white on teal meets WCAG AA. */
 .wordmark-text {
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   line-height: 1.1;
 }
-/* Both lines stay at "large text" size (bold, 19px or more) so white on
-   trust teal meets WCAG AA. */
-.wordmark-text span {
-  display: block;
-  font-weight: 700;
+.wordmark-text span { display: block; }
+.product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 18px;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-weight: 900;
+  font-size: 1.4rem;
+  white-space: nowrap;
 }
-.band-title {
-  font-weight: 700;
-  font-size: 1.2rem;
-  text-align: right;
+.product-mark {
+  display: grid;
+  place-items: center;
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: var(--lime);
+  color: var(--ink);
 }
-.band-actions { display: flex; align-items: center; gap: 12px; }
+.product-mark svg { width: 22px; height: 22px; }
+.band-title { font-weight: 700; font-size: 1.2rem; }
+.band-actions { display: flex; align-items: center; gap: 10px; }
+
+/* ---------- announcement bar ---------- */
+
+.announce { background: var(--orange); color: var(--ink); }
+.announce .wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.announce-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--orange);
+}
+.announce-icon svg { width: 17px; height: 17px; }
+.announce-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.announce-text { font-weight: 600; }
+
+/* ---------- hero ---------- */
+
+.hero { padding: 44px 0 30px; color: #fff; }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  background: var(--glass-dark);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.eyebrow::before {
+  content: "";
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 4px rgba(172, 206, 51, 0.25), 0 0 14px var(--lime);
+}
+.hero h1 {
+  margin-top: 18px;
+  max-width: 16ch;
+  font-size: clamp(2.5rem, 6vw, 4.4rem);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+/* Light green to orange, as on the Pulse greeting. Large text only. */
+.accent {
+  background: linear-gradient(90deg, var(--lime), var(--orange));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-text { margin-top: 18px; max-width: 42rem; font-size: 1.25rem; line-height: 1.5; }
+
+/* ---------- window card ---------- */
+
+.window {
+  position: relative;
+  background: var(--paper);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-card);
+  padding: 0 28px 28px;
+}
+.window-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.dots { display: flex; gap: 7px; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--red); }
+.dots i:nth-child(2) { background: var(--orange); }
+.dots i:nth-child(3) { background: var(--lime); }
+.window-label {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--teal-deep);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 
 /* ---------- buttons ---------- */
 
@@ -116,9 +275,9 @@ a { color: var(--teal-deep); }
   justify-content: center;
   gap: 8px;
   min-height: 44px;
-  padding: 10px 18px;
+  padding: 10px 20px;
   border: 2px solid var(--teal-deep);
-  border-radius: var(--radius-s);
+  border-radius: 999px;
   background: var(--teal-deep);
   color: #fff;
   font: inherit;
@@ -126,36 +285,41 @@ a { color: var(--teal-deep); }
   cursor: pointer;
   text-decoration: none;
 }
-.btn:hover { background: #005a57; border-color: #005a57; }
+.btn:hover { background: #005651; border-color: #005651; }
 .btn:disabled { opacity: 0.6; cursor: progress; }
-.btn-quiet {
-  background: var(--paper);
-  color: var(--teal-deep);
-}
+.btn-quiet { background: var(--paper); color: var(--teal-deep); }
 .btn-quiet:hover { background: var(--teal-wash); border-color: var(--teal-deep); }
-/* Solid white so the label passes contrast on the teal band. */
+/* Solid white on the teal header, so the label passes contrast. */
 .btn-on-band {
+  gap: 0;
   white-space: nowrap;
   background: #fff;
   border-color: #fff;
   color: var(--teal-deep);
-  min-height: 44px;
-  padding: 8px 16px;
 }
 .btn-on-band:hover { background: var(--teal-wash); border-color: var(--teal-wash); }
+/* Dark glass for small white labels on the teal backdrop. */
+.btn-glass {
+  background: var(--glass-dark);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.btn-glass:hover { background: rgba(0, 82, 78, 0.85); border-color: rgba(255, 255, 255, 0.4); }
 .btn-text {
   background: none;
   border-color: transparent;
   color: var(--teal-deep);
   text-decoration: underline;
   text-underline-offset: 3px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 .btn-text:hover { background: var(--teal-wash); border-color: transparent; }
 .btn-danger { background: var(--paper); color: var(--no); border-color: var(--no); }
 .btn-danger:hover { background: var(--no-bg); border-color: var(--no); }
-.btn-large { min-height: 52px; padding: 12px 28px; font-size: 1.1rem; }
+.btn-large { min-height: 54px; padding: 12px 30px; font-size: 1.125rem; }
 
 /* ---------- form fields ---------- */
 
@@ -177,20 +341,21 @@ select, textarea {
   display: block;
   width: 100%;
   margin-top: 6px;
-  padding: 10px 12px;
-  min-height: 46px;
+  padding: 10px 14px;
+  min-height: 48px;
   border: 2px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--paper);
   color: var(--ink);
   font: inherit;
 }
-textarea { min-height: 96px; resize: vertical; }
+textarea { min-height: 100px; resize: vertical; }
 input:hover, select:hover, textarea:hover { border-color: var(--teal-deep); }
 input:focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 0;
-  border-color: var(--ink);
+  outline: 3px solid var(--lime);
+  outline-offset: 1px;
+  box-shadow: none;
+  border-color: var(--teal-deep);
 }
 .w-short { max-width: 14rem; }
 .w-num { max-width: 8rem; }
@@ -218,9 +383,9 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 11px 16px;
   border: 2px solid var(--line);
-  border-radius: var(--radius-s);
+  border-radius: 14px;
   background: var(--paper);
   font-weight: 400;
   cursor: pointer;
@@ -236,34 +401,34 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
   border-color: var(--teal-deep);
   background: var(--teal-wash);
 }
-.option:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 2px; box-shadow: 0 0 0 2px var(--focus); }
+.option:has(input:focus-visible) { outline: 3px solid var(--lime); outline-offset: 2px; box-shadow: 0 0 0 2px var(--teal-deep); }
 
 /* ---------- small shared pieces ---------- */
 
 .pill {
   display: inline-block;
-  padding: 2px 10px;
+  padding: 2px 11px;
   border-radius: 999px;
   font-size: 0.875rem;
   font-weight: 700;
   white-space: nowrap;
 }
 .pill-New { background: var(--teal-wash); color: var(--teal-deep); box-shadow: inset 0 0 0 1.5px var(--teal-deep); }
-.pill-Info-requested { background: var(--alert-bg); color: var(--alert); box-shadow: inset 0 0 0 1.5px var(--alert-line); }
-.pill-Confirmed { background: var(--ok-bg); color: var(--ok); }
-.pill-Declined { background: var(--no-bg); color: var(--no); }
-.pill-Cancelled { background: var(--grey-bg); color: var(--grey); }
-.pill-Completed { background: var(--grey-bg); color: var(--grey); }
+.pill-Info-requested { background: var(--orange); color: var(--ink); }
+.pill-Confirmed { background: var(--lime); color: var(--ink); }
+.pill-Declined { background: var(--red); color: #fff; }
+.pill-Cancelled { background: var(--grey-bg); color: #4d4e50; }
+.pill-Completed { background: var(--grey-bg); color: #4d4e50; }
 
 .allergy {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px;
+  padding: 2px 11px;
   border-radius: 999px;
   background: var(--alert-bg);
-  color: var(--alert);
-  box-shadow: inset 0 0 0 1.5px var(--alert-line);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--orange);
   font-size: 0.875rem;
   font-weight: 700;
   white-space: nowrap;
@@ -272,34 +437,55 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
   content: "";
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--red);
 }
 
 .notice {
-  padding: 14px 16px;
-  border-radius: var(--radius-s);
-  border: 2px solid var(--line);
+  padding: 16px 20px;
+  border-radius: 16px;
   background: var(--paper);
+  box-shadow: var(--shadow-card);
 }
-.notice-error { border-color: var(--no); background: var(--no-bg); }
+.notice-error { border-left: 6px solid var(--no); }
 .notice-error h2 { font-size: 1.15rem; color: var(--no); margin-bottom: 6px; }
 .notice-error ul { margin: 0; padding-left: 20px; }
 .notice-error a { color: var(--no); font-weight: 700; }
 
+/* ---------- footer, on the teal backdrop ---------- */
+
 .site-footer {
-  margin-top: 56px;
+  margin-top: 64px;
   padding: 24px 0 40px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
   font-size: 0.95rem;
 }
+.site-footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; }
+.site-footer a { color: #fff; font-weight: 700; }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
+  /* Keep the ring arcs low on small screens, away from the headline and text. */
+  .ring-3 { display: none; }
+  .ring-2 { top: 70%; }
   .band-actions .band-title { display: none; }
-  .wordmark-text { font-size: 1.2rem; }
-  .btn-on-band { padding: 8px 12px; }
+  .product { font-size: 1.2rem; padding-left: 12px; }
+  .brand { gap: 12px; }
+  .window { padding: 0 16px 22px; }
+  .hero { padding-top: 30px; }
+}
+@media (max-width: 460px) {
+  /* Not enough room for the trust name, "Catering" and a button: keep the
+     trust name and shorten the rest. */
+  .product { display: none; }
+  .hide-sm { display: none; }
+  .btn-on-band { padding: 8px 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  .backdrop, .announce { display: none !important; }
+  body { background: #fff; }
 }

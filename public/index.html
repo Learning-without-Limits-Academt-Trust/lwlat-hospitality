@@ -7,52 +7,41 @@
   <meta name="description" content="Request on-site hospitality or off-site packed lunches from the LWLAT Catering Team.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <style>
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 340px;
-      gap: 40px;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 32px;
       align-items: start;
-      padding-top: 40px;
     }
-    .intro { max-width: 40rem; margin-bottom: 28px; }
-    .intro h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.01em; }
-    .intro p { margin-top: 12px; font-size: 1.125rem; }
 
-    .step {
-      position: relative;
-      margin-top: 20px;
-      padding: 28px 28px 30px 28px;
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-m);
-    }
-    .step-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px; }
+    /* Each step is a white window card. */
+    .step { margin-top: 24px; }
+    .step:first-of-type { margin-top: 0; }
+    .step-head { display: flex; align-items: center; gap: 14px; margin: 8px 0 22px; }
     .step-no {
       flex: none;
       display: grid;
       place-items: center;
-      width: 34px; height: 34px;
-      border-radius: 50%;
+      width: 40px; height: 40px;
+      border-radius: 12px;
       background: var(--teal);
       color: #fff;
-      font-weight: 800;
-      font-size: 1.05rem;
-      transform: translateY(4px);
+      font-weight: 900;
+      font-size: 1.15rem;
     }
-    .step h2 { font-size: 1.45rem; font-weight: 800; }
-    .step-no svg { width: 18px; height: 18px; }
-    .step.done .step-no { background: var(--teal-deep); }
-    .step-intro { margin: -10px 0 18px 48px; color: var(--muted); }
-    .waiting { color: var(--muted); padding: 14px 16px; border: 2px dashed var(--line); border-radius: var(--radius-s); }
+    .step h2 { font-size: 1.75rem; font-weight: 900; letter-spacing: -0.01em; }
+    .step-no svg { width: 20px; height: 20px; }
+    .step.done .step-no { background: var(--lime); color: var(--ink); }
+    .waiting { color: var(--muted); padding: 16px 18px; border: 2px dashed var(--line-strong); border-radius: 14px; background: var(--tint); }
 
     /* The first choice decides the rest of the form, so it gets large tiles. */
     .type-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
-    .type-tiles .option { flex-direction: column; gap: 4px; padding: 16px 18px 18px 50px; }
-    .type-tiles .option input { position: absolute; left: 16px; top: 18px; }
-    .type-tiles strong { font-size: 1.15rem; }
+    .type-tiles .option { flex-direction: column; gap: 4px; padding: 18px 18px 20px 52px; border-radius: 18px; }
+    .type-tiles .option input { position: absolute; left: 18px; top: 21px; }
+    .type-tiles strong { font-size: 1.2rem; }
     .type-tiles small { color: var(--muted); font-size: 0.95rem; }
 
     .options.sites { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
@@ -65,49 +54,30 @@
       grid-template-columns: minmax(0, 1fr) 7rem;
       gap: 16px;
       align-items: center;
-      padding: 10px 12px 10px 16px;
+      padding: 10px 12px 10px 18px;
       border: 2px solid var(--line);
-      border-radius: var(--radius-s);
+      border-radius: 14px;
     }
-    .lunch-row label { font-weight: 500; }
-    .lunch-row .row-hint { display: block; color: var(--muted); font-size: 0.9rem; }
+    .lunch-row label { font-weight: 600; }
+    .lunch-row .row-hint { display: block; color: var(--muted); font-size: 0.9rem; font-weight: 400; }
     #f-bespokeDetails { margin-top: 14px; }
     .lunch-row input { margin-top: 0; text-align: right; }
     .lunch-row:has(input:not(:placeholder-shown)) { border-color: var(--teal-deep); background: var(--teal-wash); }
     .lunch-total { margin-top: 10px; font-weight: 700; }
-    .lunch-total.warn { color: var(--alert); }
+    .lunch-total.warn { color: var(--no); }
 
-    .submit-row { margin-top: 28px; display: grid; gap: 12px; }
+    .submit-row { margin-top: 22px; display: grid; gap: 12px; }
     .submit-row .btn { width: 100%; }
 
-    /* ---------- the docket ---------- */
+    /* ---------- the order summary ---------- */
     .docket-wrap { position: sticky; top: 24px; }
-    .docket {
-      position: relative;
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-bottom: 0;
-      border-radius: var(--radius-m) var(--radius-m) 0 0;
-      padding: 20px 22px 18px;
-      filter: drop-shadow(0 6px 14px rgba(21, 48, 47, 0.08));
-    }
-    /* Torn ticket edge */
-    .docket::after {
-      content: "";
-      position: absolute;
-      left: -1px; right: -1px; bottom: -12px;
-      height: 12px;
-      background:
-        linear-gradient(135deg, var(--paper) 6px, transparent 0) 0 0 / 12px 12px repeat-x,
-        linear-gradient(225deg, var(--paper) 6px, transparent 0) 0 0 / 12px 12px repeat-x;
-    }
     .docket-top {
-      display: flex; justify-content: space-between; align-items: baseline;
-      padding-bottom: 12px;
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      padding-bottom: 10px;
       border-bottom: 2px solid var(--ink);
     }
-    .docket-top h2 { font-size: 1.2rem; font-weight: 800; }
-    .docket-top span { color: var(--muted); font-size: 0.9rem; }
+    .docket-top h2 { font-size: 1.5rem; font-weight: 900; }
+    .docket-top span { color: var(--muted); font-size: 0.95rem; font-weight: 600; }
     .docket dl { margin: 0; }
     .docket .d-row {
       display: grid; grid-template-columns: 6.2rem 1fr; gap: 10px;
@@ -130,101 +100,93 @@
     .docket .d-row.flash { animation: flash 1.2s ease-out; }
 
     /* ---------- confirmation ---------- */
-    .done {
-      max-width: 40rem;
-      padding: 32px;
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-top: 8px solid var(--teal);
-      border-radius: var(--radius-m);
-    }
-    .done h1 { font-size: 2rem; font-weight: 800; }
+    .done { max-width: 44rem; }
+    .done h1 { font-size: 2.4rem; font-weight: 900; margin-top: 8px; }
     .done .ref {
       margin: 20px 0;
-      padding: 14px 18px;
+      padding: 16px 20px;
       background: var(--teal-wash);
-      border-radius: var(--radius-s);
+      border-radius: 16px;
       font-size: 1.1rem;
     }
-    .done .ref strong { display: block; font-size: 1.6rem; letter-spacing: 0.02em; }
+    .done .ref strong { display: block; font-size: 1.8rem; font-weight: 900; letter-spacing: 0.02em; }
     .done p + p { margin-top: 12px; }
-    .done .btn { margin-top: 24px; }
-
-    .staff-panel {
-      margin-bottom: 20px;
-      padding: 20px 22px 24px;
-      border: 2px solid var(--ink);
-      border-radius: var(--radius-m);
-      background: var(--paper);
-    }
-    .staff-banner { margin-bottom: 20px; }
     .done .done-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
-    .done .done-actions .btn { margin-top: 0; }
 
-    .loading { padding: 64px 0; color: var(--muted); }
-    .gate {
-      max-width: 34rem;
-      margin: 56px auto 0;
-      padding: 32px;
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-top: 8px solid var(--teal);
-      border-radius: var(--radius-m);
-    }
-    .gate h1 { font-size: 1.9rem; font-weight: 800; }
+    .staff-panel { margin-bottom: 24px; }
+    .staff-banner { margin-bottom: 20px; }
+
+    .loading { padding: 64px 0; color: #fff; font-size: 1.2rem; }
+    .gate { max-width: 36rem; margin: 48px auto 0; }
+    .gate h1 { font-size: 2.2rem; font-weight: 900; margin-top: 8px; }
     .gate p { margin-top: 12px; font-size: 1.075rem; }
     .gate .btn { margin-top: 24px; }
 
+    #error-summary { margin-bottom: 24px; }
     .honey { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
-    @media (max-width: 920px) {
+    @media (max-width: 960px) {
       .layout { grid-template-columns: 1fr; gap: 0; }
-      .docket-wrap { position: static; margin-top: 28px; }
+      .docket-wrap { position: static; margin-top: 24px; }
     }
     @media (max-width: 600px) {
-      .layout { padding-top: 24px; }
-      .step { padding: 22px 16px 24px; }
-      .step-intro { margin-left: 0; }
+      .step h2 { font-size: 1.45rem; }
       .type-tiles, .row-2 { grid-template-columns: 1fr; }
       .lunch-row { grid-template-columns: minmax(0, 1fr) 5.5rem; }
     }
   </style>
 </head>
 <body>
+  <div class="backdrop" aria-hidden="true"><span class="ring ring-1"></span><span class="ring ring-2"></span><span class="ring ring-3"></span></div>
+
   <header class="band">
     <div class="wrap">
-      <a class="wordmark" href="/">
-        <!-- Add the trust logo by saving it as public/lwlat-logo.svg and removing the "hidden" attribute below. -->
-        <img src="/lwlat-logo.svg" alt="" hidden>
-        <span class="wordmark-text">Learning Without Limits<span>Academy Trust</span></span>
-      </a>
+      <div class="brand">
+        <a class="wordmark" href="/">
+          <!-- White (reversed) logo: save the master artwork as public/lwlat-logo.svg,
+               remove "hidden" from the image and delete the text below it. -->
+          <img src="/lwlat-logo.svg" alt="Learning without Limits Academy Trust" hidden>
+          <span class="wordmark-text">Learning without Limits<span>Academy Trust</span></span>
+        </a>
+        <span class="product"><span class="product-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v6a3 3 0 0 0 3 3v9"/><path d="M9 3v5"/><path d="M12 3v6a3 3 0 0 1-3 3"/><path d="M18 21V3c-2.2 1.6-3.2 4.2-3.2 7.2 0 1.8 1.2 2.8 3.2 2.8"/></svg></span><span class="product-name">Catering</span></span>
+      </div>
       <div class="band-actions">
-        <span class="band-title">Catering bookings</span>
-        <a class="btn btn-on-band" href="/admin" id="band-link">Catering Team login</a>
+        <a class="btn btn-on-band" href="/admin" id="band-link"><span class="hide-sm">Catering&nbsp;</span>Team login</a>
         <button type="button" class="btn btn-on-band" id="signout-btn" hidden>Sign out</button>
       </div>
     </div>
   </header>
 
+  <section class="announce" id="announce" aria-label="Notice">
+    <div class="wrap">
+      <span class="announce-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h3l6 4V6L6 10H3z"/><path d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path d="M19 7a7 7 0 0 1 0 10"/></svg></span>
+      <span class="announce-label">Notice</span>
+      <span class="announce-text" id="notice-text"></span>
+    </div>
+  </section>
+
   <main class="wrap">
     <p class="loading" id="loading-view" hidden>Checking your sign-in...</p>
 
-    <section class="gate" id="gate-view" hidden>
+    <section class="window gate" id="gate-view" hidden>
+      <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Catering Team</span></div>
       <h1>Add a booking</h1>
       <p>Sign in with your LWLAT Microsoft account to add a booking for the Catering Team.</p>
       <button type="button" class="btn btn-large" id="signin-btn">Sign in with Microsoft</button>
       <p class="err" id="gate-err" hidden></p>
     </section>
 
-    <div class="layout" id="form-view">
-      <div>
-        <div class="intro">
-          <h1>Book hospitality or packed lunches</h1>
-          <p>Use this form to request food and drink for a meeting or event on site, or packed lunches for a trip. Sending the form is a request only. The Catering Team will email you to confirm your booking.</p>
-          <p class="hint" id="notice-text"></p>
-        </div>
+    <div id="form-view">
+      <section class="hero intro">
+        <p class="eyebrow" id="eyebrow">Catering bookings</p>
+        <h1>Book hospitality or <span class="accent">packed lunches.</span></h1>
+        <p class="hero-text">Request food and drink for a meeting or event on site, or packed lunches for a trip. Sending the form is a request only. The Catering Team will email you to confirm your booking.</p>
+      </section>
 
-        <div class="staff-panel" id="staff-panel" hidden>
+      <div class="layout">
+      <div>
+        <div class="window staff-panel" id="staff-panel" hidden>
+          <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Catering Team</span></div>
           <p class="staff-banner"><strong>Catering Team entry.</strong> You are adding a booking yourself, for example a phone order or one that has already happened. Past dates are allowed, the notice period does not apply and contact details are optional.</p>
           <fieldset class="field" id="f-status">
             <legend>Status to give this booking</legend>
@@ -253,7 +215,8 @@
           </div>
 
           <!-- 1 -->
-          <section class="step" aria-labelledby="h-need">
+          <section class="step window" aria-labelledby="h-need">
+            <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Step 1 of 5</span></div>
             <div class="step-head"><span class="step-no" aria-hidden="true" data-n="1">1</span><h2 id="h-need">What do you need?</h2></div>
 
             <fieldset class="field" id="f-type">
@@ -286,7 +249,8 @@
           </section>
 
           <!-- 2 -->
-          <section class="step" aria-labelledby="h-event">
+          <section class="step window" aria-labelledby="h-event">
+            <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Step 2 of 5</span></div>
             <div class="step-head"><span class="step-no" aria-hidden="true" data-n="2">2</span><h2 id="h-event">The event</h2></div>
 
             <div class="field" id="f-eventName">
@@ -311,7 +275,8 @@
           </section>
 
           <!-- 3 -->
-          <section class="step" aria-labelledby="h-order">
+          <section class="step window" aria-labelledby="h-order">
+            <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Step 3 of 5</span></div>
             <div class="step-head"><span class="step-no" aria-hidden="true" data-n="3">3</span><h2 id="h-order">Your order</h2></div>
 
             <p class="waiting" id="order-waiting">Choose hospitality or packed lunches in step 1 to see the menu.</p>
@@ -377,7 +342,8 @@
           </section>
 
           <!-- 4 -->
-          <section class="step" aria-labelledby="h-diet">
+          <section class="step window" aria-labelledby="h-diet">
+            <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Step 4 of 5</span></div>
             <div class="step-head"><span class="step-no" aria-hidden="true" data-n="4">4</span><h2 id="h-diet">Dietary needs and allergies</h2></div>
 
             <fieldset class="field" id="f-dietary">
@@ -395,7 +361,8 @@
           </section>
 
           <!-- 5 -->
-          <section class="step" aria-labelledby="h-you">
+          <section class="step window" aria-labelledby="h-you">
+            <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Step 5 of 5</span></div>
             <div class="step-head"><span class="step-no" aria-hidden="true" data-n="5">5</span><h2 id="h-you">Your details</h2></div>
 
             <div class="row-2">
@@ -431,23 +398,27 @@
       </div>
 
       <aside class="docket-wrap" aria-labelledby="docket-title">
-        <div class="docket">
+        <div class="window docket">
+          <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Live summary</span></div>
           <div class="docket-top">
             <h2 id="docket-title">Your order</h2>
             <span id="docket-site"></span>
           </div>
           <p class="docket-empty" id="docket-empty">Your order will build up here as you fill in the form.</p>
           <dl id="docket-body"></dl>
-        </div>
-        <div class="submit-row">
-          <p class="docket-note" id="docket-note">Check your order, then send it to the Catering Team. They will email you to confirm.</p>
-          <button type="submit" form="booking" class="btn btn-large" id="submit-btn">Send booking request</button>
+          <div class="submit-row">
+            <p class="docket-note" id="docket-note">Check your order, then send it to the Catering Team. They will email you to confirm.</p>
+            <button type="submit" form="booking" class="btn btn-large" id="submit-btn">Send booking request</button>
+          </div>
         </div>
       </aside>
+      </div>
     </div>
 
     <div id="done-view" hidden>
-      <div class="done" tabindex="-1" id="done-panel">
+      <div class="hero"></div>
+      <div class="window done" tabindex="-1" id="done-panel">
+        <div class="window-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="window-label">Request sent</span></div>
         <h1>Booking request sent</h1>
         <div class="ref">Your reference<strong id="done-ref"></strong></div>
         <p id="done-public">The Catering Team will email <strong id="done-email"></strong> to confirm your booking or to ask any questions.</p>
@@ -462,8 +433,8 @@
 
   <footer class="site-footer">
     <div class="wrap">
-      <p>Learning Without Limits Academy Trust. Questions about a booking? Email <a href="mailto:bstephenson@lwlat.org.uk">bstephenson@lwlat.org.uk</a>.</p>
-      <p><a href="/admin">Catering Team login</a></p>
+      <p>Learning without Limits Academy Trust. Questions about a booking? Email <a href="mailto:bstephenson@lwlat.org.uk">bstephenson@lwlat.org.uk</a>.</p>
+      <p><a href="https://www.lwlat.org.uk">lwlat.org.uk</a>&ensp;<a href="/admin">Catering Team login</a></p>
     </div>
   </footer>
 
@@ -531,7 +502,9 @@
       document.querySelector(".intro h1 + p").textContent = "Enter the details of a booking the Catering Team has taken by phone, email or in person. It will go straight onto the bookings list.";
       $("date-hint").textContent = "Any date, including past dates";
       $("staff-panel").hidden = false;
-      $("band-link").textContent = "Back to bookings";
+      $("announce").hidden = true;
+      $("eyebrow").textContent = "Catering Team";
+      $("band-link").innerHTML = '<span class="hide-sm">Back to&nbsp;</span>Bookings';
       $("h-you").textContent = "Who the booking is for";
       $("done-admin").hidden = false;
       $("done-public").hidden = true;
