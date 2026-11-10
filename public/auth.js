@@ -10,6 +10,7 @@
 
 (function () {
   const ADMIN_ROLE = "Catering.Admin";
+  const FINANCE_ROLE = "Catering.Finance";
   const SCOPES = ["openid", "profile", "email"];
   let app = null;
   let account = null;
@@ -41,6 +42,7 @@
       name: account.name || claims.name || "",
       email: String(claims.email || account.username || "").toLowerCase(),
       isAdmin: Array.isArray(claims.roles) && claims.roles.includes(ADMIN_ROLE),
+      isFinance: Array.isArray(claims.roles) && claims.roles.includes(FINANCE_ROLE),
     };
   }
 

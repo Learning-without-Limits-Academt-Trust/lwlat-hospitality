@@ -235,6 +235,30 @@
     .btn-delete:hover { background: #6e1414; border-color: #6e1414; }
     .saved-msg { color: var(--ok); font-weight: 700; align-self: center; }
 
+    /* Costing: seen by the Catering Team and Finance only. */
+    .t-cost { font-weight: 700; white-space: nowrap; color: var(--teal-deep); }
+    .t-cost.unchecked { color: var(--muted); font-weight: 600; }
+    .cost-box { border: 1px solid var(--line); border-radius: var(--radius-m); padding: 14px 16px; margin-top: 8px; background: var(--paper); }
+    .cost-state { margin: 0 0 10px; font-size: 0.95rem; }
+    .cost-state .badge { display: inline-block; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; margin-right: 6px; }
+    .badge-suggested { background: var(--alert-bg); color: var(--alert); }
+    .badge-checked { background: var(--teal-wash); color: var(--teal-deep); }
+    .cost-table { width: 100%; border-collapse: collapse; }
+    .cost-table th, .cost-table td { text-align: left; padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .cost-table th { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
+    .cost-table .num { text-align: right; white-space: nowrap; }
+    .cost-table tfoot th, .cost-table tfoot td { border-bottom: 0; font-size: 1.05rem; color: var(--ink); padding-top: 10px; }
+    .cost-table input { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); min-height: 38px; }
+    .cost-table input.c-unit { width: 80px; text-align: right; }
+    .cost-table input.c-qty { width: 72px; text-align: right; }
+    .cost-table .c-del { border: 0; background: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--muted); width: 38px; height: 38px; border-radius: var(--radius-s); }
+    .cost-table .c-del:hover { background: var(--grey-bg); color: var(--no); }
+    .needs-price { color: var(--alert); font-weight: 700; }
+    .cost-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+    @media (max-width: 560px) {
+      .cost-table input.c-unit, .cost-table input.c-qty { width: 60px; }
+    }
+
     .print-title { display: none; }
 
     @media (max-width: 760px) {
@@ -437,6 +461,9 @@
     let view = "new";
     let openId = null;
     let me = null;
+    // Sent by the server only after sign-in. Never part of the public booking form.
+    let priceList = [];
+    let access = { admin: false, finance: false };
 
     // ---------- sign in ----------
 
@@ -458,7 +485,7 @@
     function noAccess() {
       bookings = [];
       $("rail").innerHTML = "";
-      showSignIn("Your account does not have access to this page. If you are in the Catering Team, ask IT to give you the Catering admin role.", false);
+      showSignIn("Your account does not have access to this page. If you are in the Catering Team, ask IT to give you the Catering admin role. Finance staff need the Catering finance role.", false);
     }
 
     $("signin-btn").addEventListener("click", () => Auth.signIn());
@@ -488,6 +515,9 @@
       try {
         const data = await api("/api/bookings");
         bookings = data.bookings;
+        priceList = data.priceList || [];
+        access = data.access || access;
+        applyAccess();
         $("load-error").hidden = true;
         $("last-updated").textContent = "Updated at " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
         render();
@@ -622,10 +652,11 @@
       let html = "";
       for (const [date, items] of groups) {
         const people = items.reduce((n, b) => n + (Number(b.people) || 0), 0);
+        const dayCost = items.filter((b) => !["Declined", "Cancelled"].includes(b.status)).reduce((n, b) => n + costOf(b), 0);
         html += `<section class="day" aria-label="${esc(longDate(date))}">
           <div class="day-head">
             <h2>${esc(longDate(date))}</h2>${relative(date) ? `<span class="when">${relative(date)}</span>` : ""}
-            <span class="meta">${items.length} booking${items.length === 1 ? "" : "s"}, ${people} people</span>
+            <span class="meta">${items.length} booking${items.length === 1 ? "" : "s"}, ${people} people, ${money(dayCost)}</span>
           </div>
           ${items.map(ticket).join("")}
         </section>`;
@@ -646,6 +677,7 @@
         <span class="t-side">
           <span class="pill pill-${slug(b.status)}">${esc(b.status)}</span>
           <span class="t-people">${esc(b.people)} people</span>
+          <span class="t-cost${b.costing && b.costing.suggested ? " unchecked" : ""}" title="${b.costing && b.costing.suggested ? "Suggested cost, not yet checked" : "Cost checked by the Catering Team"}">${money(costOf(b))}${b.costing && b.costing.suggested ? " (est.)" : ""}</span>
           ${b.dietary === "Yes" ? `<span class="allergy">Dietary needs</span>` : ""}
         </span>
       </button>`;
@@ -688,6 +720,7 @@
       const subject = encodeURIComponent(`Your catering booking ${b.id}: ${b.eventName}`);
       const first = esc(String(b.name || "").trim().split(/\s+/)[0]);
       const confirmedOk = b.confirmation && b.confirmation.sent;
+      if (!access.admin) return openFinanceDetail(b, fact, order);
       $("d-body").innerHTML = `
         ${b.dietary === "Yes" ? `<div class="allergy-box" role="note"><strong>Dietary needs or allergies</strong><p>${esc(b.dietaryDetails)}</p></div>` : ""}
 
@@ -722,6 +755,10 @@
           ${order}
           ${fact("Other information", esc(b.notes))}
         </dl>
+
+        <h3>Cost</h3>
+        <p class="hint">Only the Catering Team and Finance can see this. It is never shown to the person who booked.</p>
+        <div class="cost-box" id="d-cost"></div>
 
         <h3>Booked by</h3>
         <dl class="facts">
@@ -772,8 +809,153 @@
         $("d-delete").focus();
       });
       $("d-delete-yes").addEventListener("click", remove);
+      costEditor(b);
 
       if (!$("detail").open) $("detail").showModal();
+    }
+
+    // Finance staff see the booking and its cost, with nothing they can change.
+    function openFinanceDetail(b, fact, order) {
+      $("d-body").innerHTML = `
+        <h3>Cost</h3>
+        <div class="cost-box" id="d-cost"></div>
+        <h3>Booking</h3>
+        <dl class="facts">
+          ${fact("Status", esc(b.status))}
+          ${fact("Type", b.type === "hospitality" ? "Hospitality" : "Packed lunches")}
+          ${fact("Site", esc(b.site))}
+          ${fact("Date", esc(longDate(b.date)))}
+          ${fact("Number of people", esc(b.people))}
+          ${order}
+        </dl>
+        <h3>Booked by</h3>
+        <dl class="facts">
+          ${fact("Name", esc(b.name))}
+          ${fact("Department", esc(b.department))}
+          ${fact("Email", b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>` : "")}
+          ${fact("Cost centre", esc(b.costCentre))}
+        </dl>`;
+      $("d-cost").innerHTML = costTable(b.costing, false);
+      if (!$("detail").open) $("detail").showModal();
+    }
+
+    // ---------- costing ----------
+
+    const unitOf = (item) => { const p = priceList.find((x) => x.item === item); return p ? p.price : null; };
+    function money(n) { return "£" + (Number(n) || 0).toFixed(2); }
+    function costOf(b) { return b.costing ? Number(b.costing.total) || 0 : 0; }
+
+    function costState(c) {
+      if (!c) return "";
+      const missing = c.missingPrices ? ` <span class="needs-price">${c.missingPrices} line${c.missingPrices === 1 ? " has" : "s have"} no price yet.</span>` : "";
+      if (c.suggested) return `<p class="cost-state"><span class="badge badge-suggested">Suggested</span>Worked out from the booking form and the price list. ${access.admin ? "Check it, change anything that is wrong, then press <strong>Save costing</strong>." : "Not yet checked by the Catering Team."}${missing}</p>`;
+      const when = c.checkedAt ? new Date(c.checkedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "";
+      return `<p class="cost-state"><span class="badge badge-checked">Checked</span>by ${esc(c.checkedBy || "the Catering Team")}${when ? ` on ${esc(when)}` : ""}.${missing}</p>`;
+    }
+
+    // The read-only table, for Finance.
+    function costTable(c, editable) {
+      if (!c || !c.lines.length) return `${costState(c)}<p>No items have been costed for this booking.</p>`;
+      return `${costState(c)}<table class="cost-table">
+        <thead><tr><th scope="col">Item</th><th scope="col" class="num">Price each</th><th scope="col" class="num">Quantity</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody>${c.lines.map((l) => `<tr><td>${esc(l.item)}</td><td class="num">${l.unit === null ? '<span class="needs-price">No price</span>' : money(l.unit)}</td><td class="num">${esc(l.qty)}</td><td class="num">${l.total === null ? "" : money(l.total)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><th colspan="3">Total</th><td class="num"><strong>${money(c.total)}</strong></td></tr></tfoot>
+      </table>`;
+    }
+
+    // The editable table, for the Catering Team.
+    function costEditor(b) {
+      const box = $("d-cost");
+      const c = b.costing || { lines: [], suggested: true };
+      const options = priceList.map((p) => `<option value="${esc(p.item)}">${esc(p.group)}: ${money(p.price)} each</option>`).join("");
+      const row = (l) => `<tr>
+        <td><input class="c-item" list="price-items" value="${esc(l.item)}" aria-label="Item" maxlength="120"></td>
+        <td class="num"><input class="c-unit" inputmode="decimal" value="${l.unit === null ? "" : Number(l.unit).toFixed(2)}" aria-label="Price each in pounds" placeholder="0.00"></td>
+        <td class="num"><input class="c-qty" type="number" min="0" step="1" value="${esc(l.qty)}" aria-label="Quantity"></td>
+        <td class="num c-total"></td>
+        <td><button type="button" class="c-del" aria-label="Remove this line">&times;</button></td>
+      </tr>`;
+      box.innerHTML = `${costState(c)}
+        <datalist id="price-items">${options}</datalist>
+        <table class="cost-table">
+          <thead><tr><th scope="col">Item</th><th scope="col" class="num">Price each (£)</th><th scope="col" class="num">Quantity</th><th scope="col" class="num">Total</th><th><span class="visually-hidden">Remove</span></th></tr></thead>
+          <tbody id="cost-rows">${c.lines.map(row).join("")}</tbody>
+          <tfoot><tr><th colspan="3">Total</th><td class="num"><strong id="cost-total"></strong></td><td></td></tr></tfoot>
+        </table>
+        <div class="cost-actions">
+          <button type="button" class="btn btn-quiet" id="cost-add">Add a line</button>
+          <button type="button" class="btn" id="cost-save">Save costing</button>
+          ${c.suggested ? "" : `<button type="button" class="btn btn-text" id="cost-reset">Start again from the suggestion</button>`}
+          <span class="saved-msg" id="cost-msg" role="status"></span>
+        </div>
+        <p class="hint">Type or pick an item from the price list and its price fills in. For anything not on the list, type a name and enter the price yourself.</p>`;
+
+      const rows = $("cost-rows");
+      const read = () => [...rows.querySelectorAll("tr")].map((tr) => ({
+        item: tr.querySelector(".c-item").value.trim(),
+        unit: tr.querySelector(".c-unit").value.trim() === "" ? null : Number(tr.querySelector(".c-unit").value),
+        qty: Number(tr.querySelector(".c-qty").value || 0),
+      }));
+      const totals = () => {
+        let sum = 0;
+        rows.querySelectorAll("tr").forEach((tr) => {
+          const unit = tr.querySelector(".c-unit").value.trim();
+          const qty = Number(tr.querySelector(".c-qty").value || 0);
+          const cell = tr.querySelector(".c-total");
+          if (unit === "" || isNaN(Number(unit))) { cell.innerHTML = '<span class="needs-price">Price needed</span>'; return; }
+          const t = Math.round(Number(unit) * qty * 100) / 100;
+          sum += t; cell.textContent = money(t);
+        });
+        $("cost-total").textContent = money(sum);
+        $("cost-msg").textContent = "";
+      };
+      rows.addEventListener("input", (ev) => {
+        if (ev.target.classList.contains("c-item")) {
+          const unit = unitOf(ev.target.value.trim());
+          if (unit !== null) ev.target.closest("tr").querySelector(".c-unit").value = unit.toFixed(2);
+        }
+        totals();
+      });
+      rows.addEventListener("click", (ev) => {
+        if (ev.target.classList.contains("c-del")) { ev.target.closest("tr").remove(); totals(); }
+      });
+      $("cost-add").addEventListener("click", () => {
+        rows.insertAdjacentHTML("beforeend", row({ item: "", unit: null, qty: Number(b.people) || 1 }));
+        rows.lastElementChild.querySelector(".c-item").focus();
+        totals();
+      });
+      $("cost-save").addEventListener("click", () => {
+        const lines = read().filter((l) => l.item);
+        saveCosting({ lines }, "Costing saved");
+      });
+      $("cost-reset")?.addEventListener("click", () => saveCosting("suggested", "Back to the suggested costing"));
+      totals();
+    }
+
+    async function saveCosting(costing, message) {
+      try {
+        const data = await api(`/api/bookings/${encodeURIComponent(openId)}`, { method: "PATCH", body: JSON.stringify({ costing }) });
+        const i = bookings.findIndex((x) => x.id === openId);
+        const notes = $("d-notes").value;
+        bookings[i] = data.booking;
+        render();
+        openDetail(openId);
+        $("d-notes").value = notes;
+        $("cost-msg").textContent = message;
+      } catch (err) {
+        if (err.message !== "signed-out") {
+          $("cost-msg").textContent = "Not saved. " + err.message;
+          $("cost-msg").style.color = "var(--no)";
+        }
+      }
+    }
+
+    // Finance staff see a read-only page: no adding, changing or testing.
+    function applyAccess() {
+      const ro = !access.admin;
+      ["add-booking", "alert-test-btn"].forEach((id) => { $(id).hidden = ro; });
+      $("d-print").hidden = ro;
+      document.querySelector(".board-hero .eyebrow").textContent = ro ? "Finance (view only)" : "Catering Team";
     }
 
     async function save(changes, message) {
@@ -975,6 +1157,9 @@
         ["Booked by", (b) => b.name], ["Department", (b) => b.department], ["Email", (b) => b.email],
         ["Telephone", (b) => b.phone], ["Cost centre", (b) => b.costCentre], ["Other information", (b) => b.notes],
         ["Catering notes", (b) => b.cateringNotes], ["Received", (b) => b.createdAt],
+        ["Cost (£)", (b) => costOf(b).toFixed(2)],
+        ["Costing", (b) => !b.costing ? "" : b.costing.suggested ? "Suggested, not checked" : `Checked by ${b.costing.checkedBy || "Catering Team"}`],
+        ["Cost lines", (b) => (b.costing ? b.costing.lines : []).map((l) => `${l.qty} x ${l.item} @ ${l.unit === null ? "no price" : money(l.unit)}`).join("; ")],
       ];
       const cell = (v) => {
         let s = String(v ?? "");
@@ -1016,7 +1201,7 @@
     Auth.start().then(async (user) => {
       me = user;
       if (!user) return showSignIn();
-      if (!user.isAdmin) return noAccess();
+      if (!user.isAdmin && !user.isFinance) return noAccess();
       $("loading-view").hidden = true;
       $("signout-btn").hidden = false;
       $("board-view").hidden = false;

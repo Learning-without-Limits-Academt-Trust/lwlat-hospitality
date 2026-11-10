@@ -3,8 +3,10 @@
 //   POST   /api/bookings        open to anyone, creates a booking request. With
 //                                "staffEntry": true, the Catering Team adds a
 //                                booking by hand, with looser rules.
-//   GET    /api/bookings        Catering Team, lists every booking
-//   PATCH  /api/bookings/:id    Catering Team, updates status and catering notes
+//   GET    /api/bookings        Catering Team and Finance, lists every booking
+//                                with its costing, and the price list
+//   PATCH  /api/bookings/:id    Catering Team, updates status, catering notes
+//                                and the costing
 //   POST   /api/bookings/:id/confirm
 //                               Catering Team, confirms the order and emails the booker
 //   DELETE /api/bookings/:id    Catering Team, deletes a booking
@@ -14,11 +16,16 @@
 //
 // Catering Team requests carry the person's Microsoft sign-in token as
 // "Authorization: Bearer <token>". The Catering Team are the people IT has
-// given the Catering.Admin app role in Entra. The booking form needs no sign-in.
+// given the Catering.Admin app role in Entra. Finance staff have the
+// Catering.Finance role and can only read. The booking form needs no sign-in.
+//
+// Costs are worked out and stored here on the server. They are never sent
+// back to the booking form, and the emails do not include them.
 
 import { getStore } from "@netlify/blobs";
 import { notifyNewBooking, sendBookingConfirmation } from "../lib/notify.mjs";
 import { signedInUser } from "../lib/auth.mjs";
+import { PRICE_LIST, suggestCosting, cleanCosting } from "../lib/prices.mjs";
 
 export const config = {
   path: ["/api/bookings", "/api/bookings/:id", "/api/bookings/:id/confirm"],
@@ -48,8 +55,10 @@ export default async (req, context) => {
     if (req.method === "POST" && !id) return await createBooking(req);
     const user = await signedInUser(req);
     if (!user) return json({ error: "Please sign in with your LWLAT Microsoft account." }, 401);
-    if (!user.isAdmin) return json({ error: "Your account does not have access to the Catering Team page." }, 403);
-    if (req.method === "GET" && !id) return await listBookings();
+    if (!user.isAdmin && !user.isFinance) return json({ error: "Your account does not have access to the Catering Team page." }, 403);
+    if (req.method === "GET" && !id) return await listBookings(user);
+    // Everything below changes bookings, so it is for the Catering Team only.
+    if (!user.isAdmin) return json({ error: "Finance access is view only. Ask the Catering Team to make changes." }, 403);
     if (req.method === "POST" && id && new URL(req.url).pathname.endsWith("/confirm")) return await confirmBooking(id, user);
     if (req.method === "PATCH" && id) return await updateBooking(id, req, user);
     if (req.method === "DELETE" && id) return await deleteBooking(id);
@@ -91,6 +100,7 @@ async function createBooking(req) {
   if (user) booking.submittedBy = { name: user.name, email: user.email };
   booking.createdAt = now.toISOString();
   booking.updatedAt = booking.createdAt;
+  booking.costing = suggestCosting(booking);
 
   await saveWithNewReference(booking);
 
@@ -107,11 +117,17 @@ async function createBooking(req) {
   return json({ ok: true, reference: booking.id }, 201);
 }
 
-async function listBookings() {
+async function listBookings(user) {
   const s = store();
   const { blobs } = await s.list();
-  const bookings = await Promise.all(blobs.map((b) => s.get(b.key, { type: "json" })));
-  return json({ bookings: bookings.filter(Boolean) });
+  const bookings = (await Promise.all(blobs.map((b) => s.get(b.key, { type: "json" })))).filter(Boolean);
+  // Bookings made before costing was added get a suggestion worked out now.
+  for (const b of bookings) if (!b.costing) b.costing = suggestCosting(b);
+  return json({
+    bookings,
+    priceList: PRICE_LIST,
+    access: { admin: user.isAdmin, finance: user.isFinance },
+  });
 }
 
 async function updateBooking(id, req, user) {
@@ -126,6 +142,17 @@ async function updateBooking(id, req, user) {
   }
   if (body.cateringNotes !== undefined) {
     booking.cateringNotes = text(body.cateringNotes, 2000);
+  }
+  if (body.costing === "suggested") {
+    booking.costing = suggestCosting(booking);
+  } else if (body.costing !== undefined) {
+    try {
+      booking.costing = cleanCosting(body.costing);
+    } catch (err) {
+      throw new BadRequest(err.message);
+    }
+    booking.costing.checkedBy = user.name || user.email;
+    booking.costing.checkedAt = new Date().toISOString();
   }
   booking.updatedAt = new Date().toISOString();
   booking.updatedBy = user.name || user.email;
