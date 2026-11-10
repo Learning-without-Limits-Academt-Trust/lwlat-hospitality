@@ -5,10 +5,13 @@
 //   ENTRA_CLIENT_ID   Application (client) ID
 //
 // Catering Team members are given the "Catering.Admin" app role in Entra.
+// Finance staff are given the "Catering.Finance" app role, which lets them
+// see bookings and their costs without changing anything.
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 export const ADMIN_ROLE = "Catering.Admin";
+export const FINANCE_ROLE = "Catering.Finance";
 
 const env = (name) => (process.env[name] || "").trim();
 let keys;
@@ -33,11 +36,13 @@ export async function signedInUser(req) {
       audience: clientId,
     });
     if (payload.tid !== tenantId) return null;
+    const roles = Array.isArray(payload.roles) ? payload.roles : [];
     return {
       id: payload.oid,
       name: String(payload.name || ""),
       email: String(payload.email || payload.preferred_username || "").toLowerCase(),
-      isAdmin: Array.isArray(payload.roles) && payload.roles.includes(ADMIN_ROLE),
+      isAdmin: roles.includes(ADMIN_ROLE),
+      isFinance: roles.includes(FINANCE_ROLE),
     };
   } catch {
     return null;

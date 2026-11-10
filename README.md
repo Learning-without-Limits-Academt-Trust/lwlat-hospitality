@@ -45,10 +45,46 @@ Everything runs on Netlify. Bookings are stored in Netlify's own storage (Netlif
 | Anyone with the link | Books without signing in | No access |
 | LWLAT staff not in the Catering Team | Books without signing in | No access, even if they sign in |
 | Catering Team (Catering admin role) | Books, and uses **Add a booking** for phone and past orders | Full access after Microsoft sign-in |
+| Finance (Catering finance role) | Books without signing in | Sees every booking and its cost after Microsoft sign-in. Cannot change, confirm or delete anything |
 
 The Catering Team is the agreed list of people IT has given the **Catering admin** role on the "LWLAT Catering Bookings" app in Entra. To add or remove someone, ask IT to change that list. Nothing changes on the website.
 
 Because only the Catering Team now signs in, IT can also switch on **Assignment required** for the app (Enterprise applications, then Properties). Microsoft will then refuse sign-in to anyone not on the list before they reach the site.
+
+### Giving Finance access
+
+Finance staff need a second app role on the same "LWLAT Catering Bookings" app. Please ask IT to:
+
+1. In Entra, open **App registrations**, then **LWLAT Catering Bookings**, then **App roles**, and choose **Create app role**.
+2. Display name **Catering finance**, allowed member types **Users/Groups**, value **Catering.Finance** (exactly), description "View bookings and their costs". Tick **Enable this app role**.
+3. In **Enterprise applications**, then **LWLAT Catering Bookings**, then **Users and groups**, add each finance person (or a finance group) with the **Catering finance** role.
+
+Finance staff then sign in at `/admin` in the usual way. The page says "Finance (view only)" at the top. Nothing on the website needs changing.
+
+## Order costs
+
+Each booking has a cost, worked out from the hospitality price list. The cost is kept on the server and is only ever sent to people signed in with the Catering admin or Catering finance role. It is never sent to the booking form, and it is not in any email.
+
+- **When a booking arrives**, the site suggests a cost from what was chosen on the form and the number of people. It is marked **Suggested** and shown as "(est.)" on the list.
+- **The Catering Team checks it.** In the booking, the **Cost** section lists each item, its price, quantity and total. Change anything that is wrong, add lines with **Add a line**, then press **Save costing**. It is then marked **Checked**, with who checked it and when.
+- **Finance** sees the same cost table, the total on each booking, a daily total beside each date, and three cost columns in **Download spreadsheet**.
+
+How form choices are suggested:
+
+| On the form | Suggested as (per person) |
+| --- | --- |
+| Tea, coffee and biscuits | Tea / Coffee and Biscuits |
+| Cold drinks and water | Juice Carton |
+| Pastry selection | Half Croissant, half Pain Au Choc |
+| Sandwich platters | A line with no price, for the Catering Team to price |
+| Small buffet (3 items) | Basic Buffet (3 item) |
+| Large buffet (5 items) | Premium Buffet (5 item) |
+| Cakes and sweet treats | Cake |
+| Fruit bowl | Fruit Bowl |
+| Other | Nothing. The Catering Team adds lines by hand |
+| Every packed lunch | Grab Bag (Tiffin), £6.54 each |
+
+**To change a price**, edit `netlify/lib/prices.mjs` and redeploy. The prices came from the "Hospitality Costing" spreadsheet. Costings already saved keep the prices they were saved with. The suggestions above are set in the same file.
 
 ## Email alerts for catering managers
 
